@@ -1,0 +1,26 @@
+name: Build and test
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  linux-and-arm64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install desktop SDL runtime
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-2.0-0
+      - name: Build and test
+        run: |
+          make -j2 all test input-test render-test
+          SDL_VIDEODRIVER=dummy ./build/living-village --frames 30 --no-save
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.13.0
+      - name: Cross compile ARM64 and package KNULLI
+        run: |
+          ./scripts/build_arm64.sh
+          ./scripts/package_knulli.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: living-village-knulli-arm64
+          path: dist/living-village-knulli-arm64.tar.gz
