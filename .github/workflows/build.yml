@@ -12,6 +12,7 @@ jobs:
       - name: Build and test
         run: |
           make -j2 all test input-test render-test feedback-test game-smoke worlds-smoke
+          ./scripts/soak_worlds.sh ./build/living-village 24000
           SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./build/living-village --frames 30 --no-save
       - uses: mlugg/setup-zig@v2
         with:

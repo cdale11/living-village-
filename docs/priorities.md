@@ -20,3 +20,8 @@ independent named saves, loading, renaming, snapshot branches and confirmed
 inactive deletion with backup handling. Old current/previous files and trained
 models migrate without regeneration. These controller flows still need physical
 button/display validation on the handheld.
+
+Validation tooling now includes a packaged KNULLI system/CPU/graphics/input
+report script with no player-save access, and a two-seed, all-biome/layout
+headless soak command. These make the remaining device checks reproducible;
+they do not replace physical measurements. CI runs a short ecological survey.

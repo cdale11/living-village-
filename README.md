@@ -37,6 +37,11 @@ All files and saves stay on `/userdata`; installation does not modify the system
 
 The user confirmed the initial ARM64 release runs on KNULLI. This world-management update is cross compiled and tested on desktop, and still needs physical validation on the handheld. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
 
+The archive also includes `livingvillage/scripts/diagnose_knulli.sh`. Run it with
+`system`, `cpu`, `graphics` or `input` to create an offline diagnostic report in
+`logs/` using temporary worlds. See [device validation](docs/device-validation.md)
+for display-session requirements and the 40-world headless survey command.
+
 ## What you can play
 
 - Create seeded 64×64 worlds with four biomes and five geographical layouts.

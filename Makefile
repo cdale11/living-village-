@@ -7,7 +7,7 @@ CORE = src/world.cpp src/generation.cpp src/buildings.cpp src/population.cpp src
 GAME = $(CORE) src/main.cpp src/performance.cpp src/sound.cpp src/feedback.cpp src/sdl.cpp src/input.cpp src/render.cpp src/ui.cpp
 HEADERS = $(wildcard include/living_village/*.hpp)
 
-.PHONY: all test input-test render-test feedback-test game-smoke worlds-smoke clean package
+.PHONY: all test input-test render-test feedback-test game-smoke worlds-smoke world-soak clean package
 all: $(BUILD)/living-village
 
 $(BUILD):
@@ -38,6 +38,7 @@ $(BUILD)/world-management-tests: tests/world_management_test.cpp $(CORE) src/ui.
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/world_management_test.cpp $(CORE) src/ui.cpp -o $@ $(LDFLAGS)
 
 test: $(BUILD)/simulation-tests $(BUILD)/development-tests $(BUILD)/population-tests $(BUILD)/learning-tests $(BUILD)/adaptation-tests $(BUILD)/society-tests $(BUILD)/world-management-tests
+	sh tests/diagnostics_test.sh
 	./$(BUILD)/simulation-tests
 	./$(BUILD)/development-tests
 	./$(BUILD)/population-tests
@@ -69,6 +70,9 @@ game-smoke: $(BUILD)/living-village
 
 worlds-smoke: $(BUILD)/living-village
 	./scripts/smoke_worlds.sh ./$(BUILD)/living-village
+
+world-soak: $(BUILD)/living-village
+	./scripts/soak_worlds.sh ./$(BUILD)/living-village
 
 package:
 	./scripts/package_knulli.sh

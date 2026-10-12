@@ -4,6 +4,49 @@ The initial ARM64 release was user-confirmed to launch on KNULLI. Later expansio
 are desktop-tested and cross compiled. Physical validation of the expanded build
 remains required; no handheld FPS or battery result is claimed.
 
+## Packaged diagnostic reports
+
+The archive includes an offline, read-only system inspection and temporary-world
+measurement script. From the installed game directory:
+
+```sh
+./scripts/diagnose_knulli.sh system
+./scripts/diagnose_knulli.sh cpu
+./scripts/diagnose_knulli.sh graphics
+./scripts/diagnose_knulli.sh input
+```
+
+Each run writes a separate report under `logs/`, prints its path and preserves
+failure output. Reports include OS/architecture, available system memory, exposed
+battery status, Linux input devices and configured SDL overrides. They do not
+read player saves or print the full environment. `system` opens no display;
+`cpu` advances 300 days with 20 starting residents; `graphics` measures 900 frames;
+`input` allows 1800 frames of raw button/hat diagnostics. Fn+Start can end these
+graphical runs early. Use `graphics`/`input` only after EmulationStation or the
+current game has released the display. They use temporary worlds and never
+load/write player saves. Platform overrides use the same trusted
+`config/platform.env` as the launcher. No package installation or root filesystem
+changes are performed. Send the report files when reporting device problems.
+
+For a desktop/headless ecological survey:
+
+```sh
+make world-soak
+# Optional steps per world (default 100 days):
+./scripts/soak_worlds.sh ./build/living-village 240000
+```
+
+This surveys two seeds across all 20 biome/layout combinations, reports actual
+survivors, construction, learning, elapsed time and peak process RSS, and fails
+on execution errors. A collapsed difficult world is a measured outcome, not a
+test failure or an exception. No player saves or display are accessed. CI runs
+a shorter 10-day survey; long surveys are a separate development command.
+
+The October 12, 2026 desktop survey completed all 40 runs at 240,000 steps each
+(100 elapsed simulation days), with 15–19 living residents at the end and a
+maximum reported process RSS of 2,832 KiB. These are two sampled seeds on the
+desktop build, not a guarantee for every seed or handheld performance figures.
+
 ## Temporary performance world
 
 After quitting other fullscreen games, launch from a session where the firmware
