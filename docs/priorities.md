@@ -1,4 +1,68 @@
-# Next-priority deliverable status
+# Living Village roadmap
+
+## Agreed direction — 12 October 2026
+
+Prioritize deeper interactions between existing systems and make their causes
+and consequences visible. The player should be able to observe a problem,
+understand autonomous responses, influence conditions and watch the outcome.
+The following work is planned, not implemented. Preserve offline C++ gameplay,
+controller-only operation, bounded simulation costs and existing saves.
+
+## Next release: observable emergence
+
+1. **Explain events and follow residents.** Record bounded causal links from real
+   simulation events and decisions; let the player inspect contributing causes.
+   Add relationship and knowledge overlays, pinned residents, family/friendship
+   views and biographies drawn from recorded experiences. Do not invent causal
+   explanations when the underlying evidence was not recorded.
+2. **Expose wildlife activity and population changes.** Show distinguishable
+   feeding, drinking, sheltering, nesting, parenting and fleeing where those
+   behaviors are implemented. Provide species population trends, births, deaths
+   and habitat limitations, with controller-accessible inspection.
+3. **Connect conservation to ecological recovery.** Add conservation zones and
+   consequential grazing, regrowth and habitat recovery. Show resource flows
+   and habitat health so the player can inspect the effects of intervention.
+4. **Measure learning outcomes.** Extend diagnostics beyond inference/update
+   counts to failed journeys, food per trip, survival and recovery after changing
+   conditions. Add controlled headless comparisons of learning versus frozen
+   models across multiple seeds. Weight changes alone are not proof of better
+   decisions; improve feedback and delayed rewards before enlarging networks.
+5. **Polish and validate on the handheld throughout.** Improve text sizing,
+   contextual button hints, information hierarchy, zoom-specific detail,
+   construction stages and environmental sound. Check readability, sustained
+   frame times, CPU/RAM, battery impact, suspend behavior, audio and vibration
+   on the actual device. Desktop results do not satisfy physical validation.
+
+Acceptance focus: the player can trace a recorded ecological problem, inspect
+how villagers respond, apply a conservation intervention and observe its actual
+consequences. New records and overlays remain bounded; save migration and
+headless regression checks accompany the systems they change.
+
+## Subsequent priorities, in order
+
+1. **More consequential ecology and persistent landscape history.** Distinct
+   plant species, forest succession, seed dispersal and habitat preferences;
+   woodland loss affects moisture, shelter and food. Abandoned farms regrow,
+   travel creates paths, neglect leaves ruins, and grazing/erosion leave visible
+   traces. Expand the next release's grazing and recovery mechanisms.
+2. **Connected water and food survival.** Drinking water, wells, physical water
+   hauling, food spoilage and preservation connect hydrology and storage to
+   settlement decisions. Balance these needs against autonomous survival.
+3. **Collective planning and teaching.** Residents propose projects from observed
+   needs, contribute according to trust/resources and abandon unsuccessful
+   plans. Teaching requires contact and time; skills and local knowledge can
+   persist or disappear across generations.
+4. **Broader player influence.** Gathering restrictions, construction priorities
+   and food-reserve targets extend conservation zones while retaining autonomous
+   resident decisions.
+5. **Continued presentation improvements.** Recognizable activities, richer
+   environmental audio and clearer maps/menus follow the behavior they expose.
+
+Defer larger maps, additional biome choices and a sprawling technology tree
+until these interactions are stronger. Retain survival safeguards while allowing
+useful agent experimentation. No scripted narrative substitutes for emergence.
+
+## Implemented baseline and outstanding validation
 
 | Priority | Implemented scope | Verification still needed |
 | --- | --- | --- |
