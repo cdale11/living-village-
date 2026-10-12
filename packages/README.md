@@ -2,7 +2,7 @@
 
 `living-village-knulli-arm64.tar.gz` contains the native C++17 game, Ports launcher,
 internal cover art, configuration, documentation and diagnostics. Built from
-source milestone **9104eec** using Zig 0.13.0 for Cortex-A53 / AArch64 Linux with
+source milestone **5bfec6a** using Zig 0.13.0 for Cortex-A53 / AArch64 Linux with
 a glibc 2.17 baseline. Gameplay requires no Python, model downloads or internet.
 
 Download with GitHub's **Download raw file**, extract into `/userdata/roms/ports/`,
@@ -34,7 +34,9 @@ Native regression, controller/SDL smoke checks, save migration/continuation and
 serial/four-thread equivalence are checked. GCC and SDK libc++ director/worker
 tests exercise delayed training, Observer isolation, frozen models, safety gates,
 chunk partition, exceptions and pool cleanup. Package checks verify AArch64 ELF,
-matching binary/art and checksum. See [director](../docs/director.md) and
+matching binary/art and checksum. The 3,500-day native generational regression
+completed with 20 living residents. Short desktop checks with 20 residents held
+about 30 FPS in serial/four-thread modes; this does not establish device speedup. See [director](../docs/director.md) and
 [architecture](../docs/architecture.md) for the implemented scope.
 
 Director reward proxies are provisional; actual improvement in emergence has not
