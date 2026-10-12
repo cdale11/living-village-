@@ -27,7 +27,7 @@ void Input::load_config(const std::string& filename) {
     }
 }
 void Input::close_devices() {
-    if (haptic && sdl.HapticClose) sdl.HapticClose(haptic);
+    if (haptic && sdl.HapticClose) { sdl.HapticClose(haptic); if (sdl.QuitSubSystem) sdl.QuitSubSystem(SDL_INIT_HAPTIC); }
     haptic = nullptr;
     if (controller) sdl.GameControllerClose(controller);
     else if (joystick) sdl.JoystickClose(joystick);
@@ -115,9 +115,10 @@ bool Input::rumble(Uint16 strength, Uint32 duration) {
     if (controller && sdl.GameControllerRumble && sdl.GameControllerRumble(controller, strength, strength, duration) == 0) { rumble_status = "SDL gamepad request sent"; return true; }
     if (joystick && sdl.JoystickRumble && sdl.JoystickRumble(joystick, strength, strength, duration) == 0) { rumble_status = "SDL joystick request sent"; return true; }
     if (!haptic && joystick && sdl.JoystickIsHaptic && sdl.HapticOpenFromJoystick && sdl.HapticRumbleInit && sdl.HapticRumbleSupported && sdl.HapticRumblePlay && sdl.HapticClose
-        && sdl.JoystickIsHaptic(joystick) > 0) {
+        && sdl.InitSubSystem && sdl.QuitSubSystem && sdl.JoystickIsHaptic(joystick) > 0 && sdl.InitSubSystem(SDL_INIT_HAPTIC) == 0) {
         haptic = sdl.HapticOpenFromJoystick(joystick);
         if (haptic && (!sdl.HapticRumbleSupported(haptic) || sdl.HapticRumbleInit(haptic) != 0)) { sdl.HapticClose(haptic); haptic = nullptr; }
+        if (!haptic) sdl.QuitSubSystem(SDL_INIT_HAPTIC);
     }
     if (haptic) {
         const bool stopped = !strength || !duration;
