@@ -12,6 +12,7 @@ void Interface::cycle(const World& world, int direction) {
     view.follow = true;
 }
 Request Interface::update(const InputState& input, const World& world, double elapsed) {
+    if (input.exit_requested) return Request::Exit;
     view.selected = std::clamp(view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
     if (input.hit(Button::Menu)) { view.panel = view.panel == Panel::Map ? Panel::Menu : Panel::Map; view.menu_index = 0; }
     else if (input.hit(Button::Back)) {

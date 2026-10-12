@@ -6,6 +6,10 @@ The script derives its install location, enters `livingvillage/`, creates save/l
 
 ## Physical device checks still required
 
+The user confirmed the initial ARM64 package runs on KNULLI. The updated
+Fn+Start shortcut is verified through desktop SDL virtual input; physical
+confirmation of that shortcut is still pending.
+
 Inspect runtime facts over SSH:
 
 ```sh

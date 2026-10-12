@@ -9,3 +9,23 @@ The game reads SDL game controllers directly, including D-pad and trigger axes. 
 Run the launcher with `--diagnose-input` in a session where EmulationStation has released the display. Logs report name, GUID, mapping mode and raw button/hat presses. Press each button, record its index, then update the config. [KNULLI checks](knulli.md) explain driver diagnostics. Logs flush as events arrive.
 
 Save, load, resume, speed and exit all have controller paths. No touch or mouse input is required. Desktop keyboard equivalents are in the README.
+
+## Fn+Start exit
+
+Hold Fn and press Start to save and return to EmulationStation from any panel.
+Start alone still pauses/resumes. The chord works in either press order and
+does not also toggle the pause panel. It uses the normal save-and-exit path;
+if saving fails, the game stays open and reports the error.
+
+Recognized controllers use SDL Guide+Start. For a device named
+`Anbernic RG34XX-SP Controller` or `Anbernic RG34XX Controller`, the game also
+checks raw Fn button 11 plus Start button 10, based on KNULLI's upstream
+[controller profile](https://github.com/knulli-cfw/distribution/blob/knulli-main/package/knulli/knulli-emulationstation/controllers/es_input.cfg).
+This covers an Fn button that SDL's mapping omits.
+
+Set `hotkey=N` to override the raw Fn button, and `hotkey_start=N` to override
+the raw Start button. Defaults of `-1` choose the automatic profile; for other
+raw controllers, Start defaults to the configured `menu` button.
+`mapped_hotkey=5` selects SDL Guide and can be remapped separately. Existing
+configs work without adding these keys. Desktop F10+Space tests the same
+save-and-exit request. Use `--diagnose-input` if physical Fn is not recognized.

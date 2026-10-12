@@ -209,7 +209,8 @@ void Renderer::draw(const World& world, const View& view) {
             case Panel::Controls:
                 text(102, 80, "HANDHELD CONTROLS", cream, 3);
                 text(102, 124, "D-PAD: CAMERA / MENU\nA: SELECT / CONFIRM\nB: BACK / CANCEL\nX: INSPECT   Y: VILLAGE\nL1/R1: CYCLE VILLAGERS\nL2/R2: ZOOM OUT / IN\nSTART: MENU / PAUSE\nSELECT: SPEED", cream);
-                text(102, 304, "Remap in config/controller.cfg", muted);
+                text(102, 286, "FN + START: SAVE AND EXIT", cream);
+                text(102, 314, "Remap in config/controller.cfg", muted);
                 text(102, 354, "B BACK", muted);
                 break;
             case Panel::Map: break;

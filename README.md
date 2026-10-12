@@ -35,7 +35,7 @@ ssh root@DEVICE_IP 'tar -xzf /userdata/living-village-knulli-arm64.tar.gz -C /us
 
 All files and saves stay on `/userdata`; installation does not modify the system partition. On upgrades, replace the launcher and `bin/`, preserving your `saves/` and customized `config/`. The archive contains empty save/log directories, with no save file.
 
-**Device validation is still required.** The ARM64 ELF has been cross compiled and inspected, but has not been executed on an RG34XX SP. SDL backend, controller mapping, lid behavior and frame rate require physical testing. See [device checks](docs/knulli.md).
+The user confirmed that the initial ARM64 release runs on their KNULLI handheld. The Fn+Start fix has been tested with SDL virtual controllers and still needs confirmation on the physical device. Lid behavior and frame rate measurements remain pending. See [device checks](docs/knulli.md).
 
 ## What you can play
 
@@ -60,9 +60,12 @@ This is the first playable C++ release, with basic survival added to Milestone A
 | L1 / R1 | Previous / next villager; follow camera |
 | L2 / R2 | Zoom out / in |
 | Start | Pause menu / resume |
+| Fn + Start | Save and exit to EmulationStation |
 | Select | Simulation speed menu |
 
 SDL's mapped controller API is used when available. Unrecognized devices use joystick hats/axes and indices in `config/controller.cfg`. Fallback indices are configurable examples, not confirmed RG34XX mappings. Move the D-pad to leave camera following. [Mapping guide](docs/controls.md).
+
+Fn+Start works from any panel, in either press order. SDL Guide+Start is supported, with a fallback to KNULLI's RG34XX-SP button profile (Fn 11, Start 10). `hotkey` and `hotkey_start` override this pair if your mapping differs. On update, replacing just `livingvillage/bin/living-village` enables the shortcut with an existing default config; preserve your saves and customized configuration.
 
 Desktop: arrows/WASD pan, Enter confirms, Escape backs out, X/Y inspect/overview, Q/E cycle villagers, -/+ zoom, Space opens pause and Tab opens speed. Quit via the menu or window close.
 

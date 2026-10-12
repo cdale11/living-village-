@@ -23,7 +23,7 @@ int main() {
         check(index >= 0, "Virtual joystick creation failed");
         auto* virtual_pad = sdl.JoystickOpen(index);
         char guid[40]; sdl.JoystickGetGUIDString(sdl.JoystickGetGUID(virtual_pad), guid, sizeof(guid));
-        const std::string mapping = std::string(guid) + ",Village Test,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,leftx:a0,lefty:a1,lefttrigger:a2,righttrigger:a3,";
+        const std::string mapping = std::string(guid) + ",Village Test,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,guide:b10,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,leftx:a0,lefty:a1,lefttrigger:a2,righttrigger:a3,";
         check(sdl.GameControllerAddMapping(mapping.c_str()) >= 0, "Virtual mapping failed");
         {
             Input input(sdl); input.open_devices(); pump(); input.poll();
@@ -33,18 +33,41 @@ int main() {
             check(!input.poll().hit(Button::Menu), "Held button repeated as a press");
             set_button(virtual_pad, 9, 0); set_button(virtual_pad, 0, 1); pump();
             check(input.poll().hit(Button::Confirm), "Mapped A did not confirm");
+            set_button(virtual_pad, 10, 1); pump();
+            check(!input.poll().exit_requested, "Fn alone requested exit");
+            set_button(virtual_pad, 9, 1); pump();
+            state = input.poll();
+            check(state.exit_requested && !state.hit(Button::Menu), "Mapped Fn+Start did not exit or also toggled menu");
+            check(!input.poll().exit_requested, "Held exit shortcut repeated");
+            set_button(virtual_pad, 10, 0); pump(); input.poll();
+            set_button(virtual_pad, 10, 1); pump();
+            check(input.poll().exit_requested, "Start-then-Fn did not exit");
+            set_button(virtual_pad, 9, 0); set_button(virtual_pad, 10, 0); pump(); input.poll();
+            set_button(virtual_pad, 10, 1); set_button(virtual_pad, 11, 1); pump();
+            check(!input.poll().exit_requested, "Unrelated raw buttons triggered exit on a generic device");
+            input.device_name = "Anbernic RG34XX-SP Controller";
+            check(input.poll().exit_requested, "RG34XX-SP Fn=11 Start=10 fallback failed");
+            set_button(virtual_pad, 10, 0); set_button(virtual_pad, 11, 0); pump(); input.poll();
         }
         const std::string config = "/tmp/living-village-input-" + std::to_string(getpid()) + ".cfg";
-        { std::ofstream file(config); file << "raw_mode=1\nmenu=12\n"; }
+        { std::ofstream file(config); file << "raw_mode=1\nmenu=12\nhotkey=13\n"; }
         {
             Input input(sdl); input.load_config(config); input.open_devices();
             set_button(virtual_pad, 0, 0); set_button(virtual_pad, 12, 1); set_hat(virtual_pad, 0, SDL_HAT_UP); pump();
             auto state = input.poll();
             check(state.hit(Button::Menu) && state.y < -.5, "Raw remapping or D-pad failed");
+            check(!state.exit_requested, "Raw Start alone requested exit");
+            set_button(virtual_pad, 13, 1); pump();
+            check(input.poll().exit_requested, "Remapped raw Fn+Start failed");
+            check(!input.poll().exit_requested, "Held raw shortcut repeated");
+            set_button(virtual_pad, 12, 0); pump(); input.poll();
+            set_button(virtual_pad, 12, 1); pump();
+            state = input.poll();
+            check(state.exit_requested && !state.hit(Button::Menu), "Raw Fn-then-Start failed");
         }
         unlink(config.c_str());
         sdl.JoystickClose(virtual_pad); detach(index); dlclose(lib); sdl.Quit();
-        std::cout << "PASS: SDL mapped buttons/D-pad, edge detection, raw controller remapping\n";
+        std::cout << "PASS: SDL mapped/raw buttons and D-pad, Fn+Start in either order, held-button suppression, RG34XX-SP fallback\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << "FAIL: " << error.what() << '\n'; return 1; }
 }
