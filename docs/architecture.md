@@ -67,3 +67,9 @@ decision inference separately from side-effect-free inspector `predict()`;
 training records actual weight delta. These diagnostic session fields do not
 affect decisions, world RNG or serialized simulation state. Two overview pages
 keep simulation active to permit live monitoring.
+
+`sprites.cpp` builds original small SDL textures from
+hand-authored pixel data once, and renders them without image codecs. `rumble.cpp`
+provides bounded Linux evdev force feedback as a fallback to SDL. Runtime resource
+meters sample process CPU/current RSS at one-second intervals and never enter
+the save or simulation state. Artwork is installed inside the game folder.

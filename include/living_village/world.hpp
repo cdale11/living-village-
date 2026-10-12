@@ -128,7 +128,7 @@ struct EcologyStats {
 };
 class World {
 public:
-    explicit World(std::uint32_t seed = 20261011, Biome biome = Biome::Temperate, Geography geography = Geography::Ponds);
+    explicit World(std::uint32_t seed = 20261011, Biome biome = Biome::Temperate, Geography geography = Geography::Ponds, int starting_population = 6);
     std::uint32_t seed;
     Biome biome = Biome::Temperate;
     Geography geography = Geography::Ponds;
@@ -170,6 +170,7 @@ public:
     bool passable(int x, int y) const;
     std::vector<Point> route(Point from, Point to) const;
     void update(double dt = fixed_step);
+    void recruit_wildlife();
     void event(const std::string& message);
     int day() const { return 1 + static_cast<int>(ticks / 2400); }
     double daylight() const;

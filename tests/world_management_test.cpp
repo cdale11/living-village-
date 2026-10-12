@@ -88,7 +88,7 @@ int main() {
         ui.view.edit_buffer = "4294967295"; ui.update(press, named, .033); check(ui.view.draft_seed == 4294967295U && ui.view.panel == Panel::NewVillage, "Maximum unsigned seed failed");
         ui.view.menu_index = 2; ui.update(press, named, .033); check(ui.view.draft_biome == Biome::Woodland, "Controller could not select biome");
         ui.view.menu_index = 3; ui.update(press, named, .033); check(ui.view.draft_geography == Geography::River, "Controller could not select layout");
-        ui.view.menu_index = 5; check(ui.update(press, named, .033) == Request::NewVillage, "First-world creation was not reachable");
+        ui.view.menu_index = 6; check(ui.update(press, named, .033) == Request::NewVillage, "First-world creation was not reachable");
         ui.view.has_world = true; ui.view.panel = Panel::Saves; ui.view.saves = {{copy_id, "Existing World"}}; ui.view.active_slot = "default"; ui.view.menu_index = 0;
         InputState delete_press = press; delete_press.pressed[static_cast<int>(Button::Inspect)] = true;
         check(ui.update(delete_press, named, .033) == Request::None && ui.view.panel == Panel::ConfirmDelete, "Delete and confirm chord skipped confirmation");

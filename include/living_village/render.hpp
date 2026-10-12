@@ -1,5 +1,6 @@
 #pragma once
 #include "sdl.hpp"
+#include "sprites.hpp"
 #include "world.hpp"
 #include "saves.hpp"
 #include <memory>
@@ -11,6 +12,9 @@ struct View {
     int tile_size = 28, selected = 0, menu_index = 0, speed = 1;
     bool simulation_running() const { return has_world && (panel == Panel::Map || (panel == Panel::Overview && (overview_page == 3 || overview_page == 8))); }
     bool follow = false;
+    int watched_animal_id = -1;
+    double cpu_percent = -1, ram_mib = -1;
+    std::string audio_output, audio_status = "Not checked", rumble_status = "Not checked";
     int inspector_page = 0;
     int overview_page = 0;
     int selected_animal = 0;
@@ -24,19 +28,20 @@ struct View {
     Geography draft_geography = Geography::Ponds;
     std::string draft_name = "New Village", edit_buffer;
     int edit_cursor = 0;
-    int draft_supplies = 1;
+    int draft_supplies = 1, draft_population = 6;
     bool renaming = false;
     std::string status = "A living village begins";
 };
 class Renderer {
 public:
-    Renderer(SDLApi& sdl, SDL_Renderer* renderer) : sdl(sdl), renderer(renderer) {}
+    Renderer(SDLApi& sdl, SDL_Renderer* renderer) : sdl(sdl), renderer(renderer), sprites(sdl, renderer) {}
     void draw(const World& world, const View& view);
     void screenshot(const std::string& filename);
 private:
     std::unique_ptr<World> preview;
     SDLApi& sdl;
     SDL_Renderer* renderer;
+    Sprites sprites;
     void rect(int x, int y, int w, int h, SDL_Color color);
     void outline(int x, int y, int w, int h, SDL_Color color);
     void text(int x, int y, const std::string& text, SDL_Color color, int scale = 2, int width = 700);

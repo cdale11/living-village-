@@ -33,3 +33,16 @@ int battery_percent() {
     return -1;
 }
 }
+
+#include <unistd.h>
+namespace village {
+void ResourceMeter::sample(double wall_seconds) {
+    if (!std::isfinite(wall_seconds) || (last_wall >= 0 && wall_seconds - last_wall < 1)) return;
+    struct rusage usage{}; if (getrusage(RUSAGE_SELF, &usage) != 0) return;
+    const double cpu = usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 + usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6;
+    if (last_wall >= 0 && wall_seconds > last_wall) cpu_percent = std::max(0.0, (cpu - last_cpu) * 100 / (wall_seconds - last_wall));
+    last_wall = wall_seconds; last_cpu = cpu;
+    std::ifstream memory("/proc/self/statm"); unsigned long long virtual_pages = 0, resident_pages = 0;
+    if (memory >> virtual_pages >> resident_pages) { const long size = sysconf(_SC_PAGESIZE); if (size > 0) ram_mib = resident_pages * static_cast<double>(size) / (1024 * 1024); }
+}
+}

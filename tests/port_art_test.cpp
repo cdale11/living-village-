@@ -12,11 +12,11 @@ int main() {
     char tmp[] = "/tmp/lv-art-XXXXXX"; auto* dir = mkdtemp(tmp); if (!dir) return 1;
     const std::filesystem::path root(dir), list = root / "gamelist.xml";
     try {
-        std::filesystem::create_directory(root / "images"); write(root / "LivingVillage.sh", "launcher"); write(root / "images/LivingVillage-image.png", "test image");
+        std::filesystem::create_directories(root / "livingvillage/images"); write(root / "LivingVillage.sh", "launcher"); write(root / "livingvillage/images/cover.png", "test image");
         const std::string other = "  <game id=\"123\"><path>./Other.sh</path><name>Other &amp; Port</name><image>./other.png</image><desc><![CDATA[A <game> tag]]></desc></game>\n";
         const std::string before = "<?xml version=\"1.0\"?><gameList>\n<!-- <game> ignore -->\n" + other + "</gameList>";
         write(list, before); register_port_art(root); const auto first = read(list);
-        check(first.find(other) != std::string::npos && first.find("./images/LivingVillage-image.png") != std::string::npos, "Art registration lost unrelated metadata");
+        check(first.find(other) != std::string::npos && first.find("./livingvillage/images/cover.png") != std::string::npos, "Art registration lost unrelated metadata");
         check(read(root / "gamelist.xml.living-village.bak") == before, "Metadata backup was not the original");
         register_port_art(root); check(read(list) == first && read(root / "gamelist.xml.living-village.bak") == before, "Registration not idempotent");
         write(list, "<gameList><game><path>LivingVillage.sh</path><name>My Village</name><image>old.png</image><rating>0.8</rating></game></gameList>");

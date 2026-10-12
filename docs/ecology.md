@@ -156,3 +156,20 @@ full living/deceased/wildlife populations with maximum replay and route buffers.
 Controller/rendering and save-management smoke tests pass. A short desktop
 20-resident/wildlife run measured 30.19 FPS at the 30 FPS cap, with 8,704 KiB peak
 process RSS. These figures do not establish physical handheld performance.
+
+## Wildlife visibility and regional dispersal
+
+New worlds place two rabbits and two deer near the initial camera in passable
+habitat, with remaining wildlife distributed across the map. The header reports
+the real animal count. Y → Wildlife → A follows an animal; enlarged original
+sprites distinguish deer, rabbits, foxes and colonies. D-pad releases the camera.
+Existing saves retain actual wildlife; zero animals is reported honestly.
+
+Once per simulated day, under nonstorm/nonheatwave weather, a species below its
+regional target (four herbivores/colonies, two foxes) has a one-in-four dispersal
+opportunity. At most sixteen boundary habitats are checked per species. New
+animals require passable land, healthy plants, moisture, no fire, and biomass
+(herbivores), nectar (bees) or at least four prey animals (foxes). The total
+population remains capped at 48. This models an external regional population;
+an entirely unsuitable or water-only boundary cannot be recolonized this way.
+Births and arrivals are distinct, and arrivals are logged from actual conditions.

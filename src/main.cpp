@@ -26,7 +26,7 @@ struct Options {
     village::Biome biome = village::Biome::Temperate;
     village::Geography geography = village::Geography::Ponds;
     std::string world_name = "New Village";
-    int frames = 0, steps = 24000, benchmark_villagers = 0, starting_food = 18;
+    int frames = 0, steps = 24000, benchmark_villagers = 0, starting_food = 18, starting_population = 6;
     std::string save_dir = "saves", screenshot, art_ports;
 };
 std::uint32_t seed_value(const std::string& value) {
@@ -41,6 +41,7 @@ Options options(int argc, char** argv) {
         auto value = [&]() { if (++i >= argc) throw std::runtime_error("Missing value for " + arg); return std::string(argv[i]); };
         if (arg == "--fullscreen") result.fullscreen = true;
         else if (arg == "--ai-diagnostics") result.ai_diagnostics = true;
+        else if (arg == "--population") { result.starting_population = std::stoi(value()); if (result.starting_population < 2 || result.starting_population > 20) throw std::runtime_error("Population must be 2 to 20"); }
         else if (arg == "--starting-food") { result.starting_food = std::stoi(value()); if (result.starting_food != 6 && result.starting_food != 18 && result.starting_food != 30) throw std::runtime_error("Starting food: 6, 18 or 30"); }
         else if (arg == "--headless") result.headless = true;
         else if (arg == "--no-save") result.no_save = true;
@@ -69,7 +70,7 @@ Options options(int argc, char** argv) {
                       << "--fullscreen --seed N --save-dir PATH --new --no-save\n"
                       << "--world-name NAME --biome temperate|woodland|meadow|arid|taiga|rainforest|wetland|savanna\n"
                       << "--layout ponds|river|island|coast|highlands|lakes|peninsula|archipelago|delta|canyon|valley|plains\n"
-                      << "--starting-food 6|18|30 --ai-diagnostics (live panel)\n"
+                      << "--population 2..20 --starting-food 6|18|30 --ai-diagnostics (live panel)\n"
                       << "--register-port-art PORTS_DIRECTORY (no SDL needed)\n"
                       << "--headless --steps N   (no display, SDL or save writes)\n"
                       << "--diagnose-input --frames N --screenshot FILE.ppm\n"
@@ -87,7 +88,7 @@ int main(int argc, char** argv) {
     try {
         const Options config = options(argc, argv);
         if (!config.art_ports.empty()) { register_port_art(config.art_ports); return 0; }
-        World world(config.seed, config.biome, config.geography); world.world_name = config.world_name; world.food_stock = config.starting_food;
+        World world(config.seed, config.biome, config.geography, config.starting_population); world.world_name = config.world_name; world.food_stock = config.starting_food;
         if (config.benchmark_villagers) {
             world.population_growth = false;
             while (static_cast<int>(world.villagers.size()) < config.benchmark_villagers) {
@@ -112,7 +113,7 @@ int main(int argc, char** argv) {
         SaveCatalog catalog(config.save_dir);
         Interface ui; bool ready = config.no_save;
         std::string active_id;
-        ui.view.draft_seed = config.seed; ui.view.draft_biome = config.biome; ui.view.draft_geography = config.geography; ui.view.draft_name = config.world_name; ui.view.draft_supplies = config.starting_food == 6 ? 0 : config.starting_food == 30 ? 2 : 1;
+        ui.view.draft_population = config.starting_population; ui.view.draft_seed = config.seed; ui.view.draft_biome = config.biome; ui.view.draft_geography = config.geography; ui.view.draft_name = config.world_name; ui.view.draft_supplies = config.starting_food == 6 ? 0 : config.starting_food == 30 ? 2 : 1;
         if (!config.no_save) {
             active_id = catalog.active();
             if (active_id.empty() && catalog.exists("default")) active_id = "default";
@@ -123,7 +124,7 @@ int main(int argc, char** argv) {
             }
             if (config.new_world) {
                 try {
-                    World fresh(config.seed, config.biome, config.geography); fresh.world_name = config.world_name; fresh.food_stock = config.starting_food;
+                    World fresh(config.seed, config.biome, config.geography, config.starting_population); fresh.world_name = config.world_name; fresh.food_stock = config.starting_food;
                     const auto id = catalog.create(fresh); catalog.activate(id); active_id = id; world = std::move(fresh); ready = true;
                 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); ui.view.panel = Panel::Saves; }
             }
@@ -155,6 +156,9 @@ int main(int argc, char** argv) {
         if (auto* mappings = sdl.RWFromFile("config/gamecontrollerdb.txt", "r")) sdl.GameControllerAddMappingsFromRW(mappings, 1);
         Input input(sdl); input.load_config("config/controller.cfg"); input.diagnostic = config.diagnose; input.open_devices();
         Renderer graphics(sdl, renderer.get()); Feedback feedback(sdl);
+        feedback.play(Cue::Complete,world.volume);
+        if (world.rumble_enabled) input.rumble(24000,90);
+        ResourceMeter resource_meter; Uint32 last_ambient = sdl.GetTicks();
         std::uint64_t last_feedback = world.event_sequence;
         Uint32 previous = sdl.GetTicks(), last_save = previous;
         double accumulator = 0;
@@ -193,10 +197,14 @@ int main(int argc, char** argv) {
                 input.handle(event);
             }
             const auto controls = input.poll();
-            if (std::any_of(controls.pressed.begin(), controls.pressed.end(), [](bool held) { return held; })) feedback.play(Cue::Confirm, world.volume);
             const auto request = ui.update(controls, world, elapsed);
+            if (request != Request::TestFeedback && request != Request::Volume && std::any_of(controls.pressed.begin(), controls.pressed.end(), [](bool held) { return held; })) feedback.play(Cue::Confirm, world.volume);
+            if (request != Request::TestFeedback && world.rumble_enabled && (controls.hit(Button::Confirm) || controls.hit(Button::Back))) input.rumble(22000,45);
             world.simulation_speed = ui.view.speed;
-            if (request == Request::Save) save();
+            if (request == Request::TestFeedback) {
+                feedback.mute(); feedback.play(Cue::Complete,40); const bool motor = input.rumble(42000,250);
+                ui.view.status = std::string("Test: sound ") + (feedback.last_queue_ok ? "queued" : "unavailable") + " / motor " + (motor ? "request sent" : "unavailable");
+            } else if (request == Request::Save) save();
             else if (request == Request::Load) {
                 if (!ready) { ui.view.panel = Panel::Saves; refresh_saves(); }
                 else try { world = load_save(save_path); ui.view.speed = world.simulation_speed; ui.view.status = "Village loaded"; accumulator = 0; }
@@ -216,10 +224,16 @@ int main(int argc, char** argv) {
                 world.learning_enabled = !world.learning_enabled;
                 ui.view.status = world.learning_enabled ? "Online neural learning enabled" : "Learning paused - learned decisions retained";
             } else if (request == Request::Volume) {
-                world.volume = world.volume >= 100 ? 0 : std::min(100, world.volume + 20);
+                feedback.mute(); world.volume = world.volume >= 100 ? 0 : std::min(100, world.volume + 20);
                 if (world.volume == 0) feedback.mute(); else feedback.play(Cue::Confirm, world.volume);
+            } else if (request == Request::AudioOutput) {
+                if (feedback.next_output()) {
+                    feedback.play(Cue::Complete,40);
+                    try { write_atomic_text("config/audio-device.txt",feedback.output_name + "\n"); ui.view.status = "Audio output selected - X tests speaker and motor"; }
+                    catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "Output changed for this session; preference could not save"; }
+                } else ui.view.status = "Output unavailable - L1 tries next / check audio log";
             } else if (request == Request::ToggleRumble) {
-                world.rumble_enabled = !world.rumble_enabled; if (world.rumble_enabled) input.rumble(); else input.rumble(0, 0);
+                world.rumble_enabled = !world.rumble_enabled; if (world.rumble_enabled) input.rumble(30000,160); else input.rumble(0, 0);
             } else if (request == Request::ExportHistory) {
                 try { export_history(world, catalog.export_directory(active_id.empty() ? "temporary" : active_id)); ui.view.status = "History exported to this world's exports folder"; }
                 catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "EXPORT FAILED - CHECK LOG"; }
@@ -231,7 +245,7 @@ int main(int argc, char** argv) {
                 try { refresh_saves(); } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
             } else if (request == Request::NewVillage) {
                 try {
-                    World fresh(ui.view.draft_seed, ui.view.draft_biome, ui.view.draft_geography); fresh.world_name = ui.view.draft_name;
+                    World fresh(ui.view.draft_seed, ui.view.draft_biome, ui.view.draft_geography, ui.view.draft_population); fresh.world_name = ui.view.draft_name;
                     const int starting_food[] = {6, 18, 30}; fresh.food_stock = starting_food[ui.view.draft_supplies];
                     if (!save()) throw std::runtime_error("Current world could not save - creation cancelled");
                     std::string id;
@@ -295,13 +309,19 @@ int main(int argc, char** argv) {
                 last_feedback = world.event_sequence;
                 if (!world.chronicle.empty()) {
                     const auto& message = world.chronicle.back().message;
-                    if (message.find("Completed:") != std::string::npos || message.find("Improved tools:") != std::string::npos || message.find("Irrigation:") != std::string::npos) { feedback.play(Cue::Complete, world.volume); if (world.rumble_enabled) input.rumble(); }
+                    if (message.find("Completed:") != std::string::npos || message.find("Improved tools:") != std::string::npos || message.find("Irrigation:") != std::string::npos) { feedback.play(Cue::Complete, world.volume); if (world.rumble_enabled) input.rumble(30000,160); }
                     else if (message.find("is born") != std::string::npos) feedback.play(Cue::Birth, world.volume);
                     else if (message.find("exchange food") != std::string::npos) feedback.play(Cue::Trade, world.volume);
                     else if (message.find("died:") != std::string::npos || message.find("running low") != std::string::npos) feedback.play(Cue::Warning, world.volume);
                 }
             }
             if (begin - last_save >= 30000) save();
+            if (ui.view.simulation_running() && world.volume > 0 && begin - last_ambient >= 6000) {
+                feedback.play(world.raining() ? Cue::Rain : world.daylight() > .35 ? Cue::Birds : Cue::Fire,world.volume); last_ambient = begin;
+            }
+            resource_meter.sample(std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count());
+            ui.view.cpu_percent = resource_meter.cpu_percent; ui.view.ram_mib = resource_meter.ram_mib;
+            ui.view.audio_output = feedback.output_name.empty() ? "Default system output" : feedback.output_name; ui.view.audio_status = feedback.status; ui.view.rumble_status = input.rumble_status;
             graphics.draw(world, ui.view);
             ++frame_count;
             if (config.frames > 0 && frame_count >= config.frames) {

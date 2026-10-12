@@ -27,6 +27,8 @@ void Input::load_config(const std::string& filename) {
     }
 }
 void Input::close_devices() {
+    if (haptic && sdl.HapticClose) sdl.HapticClose(haptic);
+    haptic = nullptr;
     if (controller) sdl.GameControllerClose(controller);
     else if (joystick) sdl.JoystickClose(joystick);
     controller = nullptr; joystick = nullptr;
@@ -109,8 +111,22 @@ InputState Input::poll() {
     return state;
 }
 bool Input::rumble(Uint16 strength, Uint32 duration) {
-    if (controller && sdl.GameControllerRumble) return sdl.GameControllerRumble(controller, strength, strength, duration) == 0;
-    if (joystick && sdl.JoystickRumble) return sdl.JoystickRumble(joystick, strength, strength, duration) == 0;
-    return false;
+    duration = std::min<Uint32>(duration, 2000);
+    if (controller && sdl.GameControllerRumble && sdl.GameControllerRumble(controller, strength, strength, duration) == 0) { rumble_status = "SDL gamepad request sent"; return true; }
+    if (joystick && sdl.JoystickRumble && sdl.JoystickRumble(joystick, strength, strength, duration) == 0) { rumble_status = "SDL joystick request sent"; return true; }
+    if (!haptic && joystick && sdl.JoystickIsHaptic && sdl.HapticOpenFromJoystick && sdl.HapticRumbleInit && sdl.HapticRumbleSupported && sdl.HapticRumblePlay && sdl.HapticClose
+        && sdl.JoystickIsHaptic(joystick) > 0) {
+        haptic = sdl.HapticOpenFromJoystick(joystick);
+        if (haptic && (!sdl.HapticRumbleSupported(haptic) || sdl.HapticRumbleInit(haptic) != 0)) { sdl.HapticClose(haptic); haptic = nullptr; }
+    }
+    if (haptic) {
+        const bool stopped = !strength || !duration;
+        const int result = stopped ? (sdl.HapticRumbleStop ? sdl.HapticRumbleStop(haptic) : -1) : sdl.HapticRumblePlay(haptic, strength / 65535.f, duration);
+        if (result == 0) { rumble_status = "SDL haptic request sent"; return true; }
+    }
+    const std::string previous_status = rumble_status;
+    const bool sent = linux_rumble.play(strength, duration); rumble_status = linux_rumble.status;
+    if (!sent && previous_status != rumble_status) std::cout << "Rumble unavailable: " << rumble_status << '\n';
+    return sent;
 }
 } // namespace village

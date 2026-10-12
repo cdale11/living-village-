@@ -58,7 +58,9 @@ void World::initialize_ecology(bool wildlife) {
     for (int species = 0; species < 4; ++species) for (int n = 0; n < counts[species]; ++n)
         for (int attempt = 0; attempt < 64; ++attempt) {
             Point p{3 + eco_random(58), 3 + eco_random(58)};
-            if (std::abs(p.x - camp.x) + std::abs(p.y - camp.y) < 12 || !passable(p.x, p.y)) continue;
+            const bool nearby = species < 2 && n < 2 && attempt < 32;
+            if (nearby) p = {camp.x + (n == 0 ? -1 : 1) * (7 + eco_random(3)), camp.y - 3 + eco_random(7)};
+            if ((!nearby && std::abs(p.x - camp.x) + std::abs(p.y - camp.y) < 12) || !passable(p.x, p.y)) continue;
             if (spawn_animal(static_cast<Species>(species), p)) break;
         }
 }

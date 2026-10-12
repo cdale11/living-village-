@@ -15,12 +15,16 @@
     X(JoystickOpen) X(JoystickClose) X(JoystickName) X(JoystickInstanceID) \
     X(JoystickNumHats) X(JoystickGetHat) X(JoystickNumAxes) X(JoystickGetAxis) \
     X(JoystickNumButtons) X(JoystickGetButton) X(JoystickGetAttached) X(JoystickGetGUID) X(JoystickGetGUIDString) \
+    X(CreateTexture) X(DestroyTexture) X(UpdateTexture) X(SetTextureBlendMode) X(SetTextureColorMod) X(RenderCopyEx) \
     X(RenderReadPixels)
 
 #define VILLAGE_SDL_OPTIONAL(X) \
     X(InitSubSystem) X(QuitSubSystem) X(OpenAudioDevice) X(CloseAudioDevice) X(PauseAudioDevice) \
     X(QueueAudio) X(ClearQueuedAudio) X(GetQueuedAudioSize) X(GetCurrentAudioDriver) \
-    X(GameControllerRumble) X(JoystickRumble)
+    X(GameControllerRumble) X(JoystickRumble) X(JoystickIsHaptic) X(HapticOpenFromJoystick) \
+    X(HapticRumbleSupported) X(HapticRumbleInit) X(HapticRumblePlay) X(HapticRumbleStop) X(HapticClose) \
+    X(GetNumAudioDrivers) X(GetAudioDriver) X(GetNumAudioDevices) X(GetAudioDeviceName) \
+    X(NewAudioStream) X(FreeAudioStream) X(AudioStreamPut) X(AudioStreamGet) X(AudioStreamAvailable) X(AudioStreamFlush) X(AudioStreamClear)
 
 namespace village {
 class SDLApi {

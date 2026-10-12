@@ -5,3 +5,4 @@ logs/
 *.log
 *.tmp
 __pycache__/
+config/audio-device.txt

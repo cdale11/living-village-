@@ -39,3 +39,13 @@ with explicit session/lifetime distinctions. Terrain/shoreline/sprite details,
 panel framing and a compact minimap improve readability. An original cover and
 native atomic Ports metadata registration are packaged without replacing other
 games. Physical validation of these new screens and theme integration remains.
+
+The next handheld revision bundles artwork inside the game and registers it
+automatically; adds 2–20 starting residents, nearby wildlife, animal-follow camera,
+habitat-dependent regional dispersal, contact-based resource knowledge exchange,
+live event/route cues and original cached pixel textures. It negotiates audio
+formats, provides output selection and tests, supports SDL haptics/Linux FF, and
+samples CPU/current RSS in the header. The device log confirms ALSA and controller
+FF capability, but audible output, felt pulses and the new visuals still require
+physical confirmation. No scripted emergence or automatic power-off progression
+was introduced.

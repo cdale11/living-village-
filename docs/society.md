@@ -83,3 +83,14 @@ Save version 7 retains all these systems, replay, exploration state and
 sound/rumble preferences. Versions 1–6 upgrade automatically; version 4 trained
 weights and pending experiences remain intact. Back up the whole saves directory
 before upgrading. Older executables cannot load version 7.
+
+## Knowledge networks
+
+Actual nearby social encounters can convey known food, wood and stone locations
+when the speaker is cooperative or trusts the listener and their relationship
+is nonnegative. Only still-useful finite resources are shared, and each memory
+list caps at 48 locations. New information triggers reconsideration of the
+listener's goals. No resources or movement are transferred. Discoveries therefore
+spread through contact networks, while competition, hunger and changing stock
+levels still determine how agents use them. Map route dots, social links, work
+tools, carried materials and the real event ribbon expose these interactions.

@@ -10,15 +10,17 @@ Point position(const Villager& p) { return {static_cast<int>(std::round(p.x)), s
 int distance(Point a, Point b) { return std::abs(a.x - b.x) + std::abs(a.y - b.y); }
 }
 int World::random(int maximum) { return static_cast<int>(rng() % static_cast<unsigned>(maximum)); }
-World::World(std::uint32_t initial_seed, Biome initial_biome, Geography initial_geography)
+World::World(std::uint32_t initial_seed, Biome initial_biome, Geography initial_geography, int starting_population)
     : seed(initial_seed), biome(initial_biome), geography(initial_geography), rng(seed) {
     if (static_cast<int>(biome) < 0 || static_cast<int>(biome) >= biome_count || static_cast<int>(geography) < 0 || static_cast<int>(geography) >= geography_count) throw std::invalid_argument("Unknown biome or geography");
+    if (starting_population < 2 || starting_population > population_limit) throw std::invalid_argument("Starting population must be 2 to 20");
+    next_person_id = starting_population;
     generate_terrain();
     Building stockpile; stockpile.id = 0; stockpile.kind = BuildingKind::Stockpile; stockpile.position = {33, 32}; stockpile.complete = true;
     Building fire; fire.id = 1; fire.kind = BuildingKind::Campfire; fire.position = camp; fire.complete = true; fire.fuel = 240;
     buildings = {stockpile, fire};
-    const char* names[] = {"Mira", "Arin", "Tala", "Bram", "Neri", "Oren"};
-    for (int i = 0; i < 6; ++i) {
+    const char* names[] = {"Mira", "Arin", "Tala", "Bram", "Neri", "Oren", "Lina", "Theo", "Suri", "Kai", "Esme", "Jori", "Ada", "Remy", "Iris", "Ravi", "Fern", "Elio", "Wren", "Cora"};
+    for (int i = 0; i < starting_population; ++i) {
         Villager p;
         p.id = i; p.brain.initialize(seed, i); p.name = names[i]; p.x = 31 + i % 3; p.y = 30 + i / 3;
         p.age = 19 + random(24); p.curiosity = 0.3 + random(60) / 100.0;
@@ -27,7 +29,7 @@ World::World(std::uint32_t initial_seed, Biome initial_biome, Geography initial_
         villagers.push_back(p);
     }
     initialize_ecology();
-    event("Six villagers arrive at the clearing"); record_day();
+    event(starting_population == 6 ? "Six villagers arrive at the clearing" : std::to_string(starting_population) + " villagers arrive at the clearing"); record_day();
 }
 bool World::passable(int x, int y) const {
     return x >= 0 && y >= 0 && x < map_size && y < map_size && tile(x, y).terrain != Terrain::Water;
@@ -366,6 +368,7 @@ void World::execute(Villager& p, double dt) {
                 reward(.16 * (wood + stone) * p.cooperation); practice_work(p, p.goal, wood + stone);
                 site->contribute(p.id);
                 remember(p, std::string("Supplied ") + building_name(site->kind));
+                event(p.name + " delivers " + std::to_string(wood) + " wood / " + std::to_string(stone) + " stone to " + building_name(site->kind));
                 if (site->initiator >= 0 && site->initiator != p.id) {
                     p.relationships[site->initiator] = std::min(100.0, p.relationships[site->initiator] + 1);
                     if (auto* recipient = person(site->initiator)) {
@@ -425,6 +428,7 @@ void World::execute(Villager& p, double dt) {
 void World::update(double dt) {
     if (!std::isfinite(dt) || dt <= 0 || dt > 1) return;
     ++ticks;
+    if (ecology_enabled && ticks % 2400 == 0) recruit_wildlife();
     const double growth = dt * growing_rate();
     if (ecology_enabled && ticks % 10 == 0) update_ecology(dt * 10);
     if (!ecology_enabled) for (auto& cell : tiles) {

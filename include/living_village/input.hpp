@@ -1,5 +1,6 @@
 #pragma once
 #include "sdl.hpp"
+#include "rumble.hpp"
 #include <array>
 #include <string>
 
@@ -21,12 +22,15 @@ public:
     void handle(const SDL_Event& event);
     InputState poll();
     bool rumble(Uint16 strength = 8000, Uint32 duration = 120);
+    std::string rumble_status = "Not tested";
     bool diagnostic = false;
     std::string device_name = "Keyboard";
 private:
     SDLApi& sdl;
     SDL_GameController* controller = nullptr;
     SDL_Joystick* joystick = nullptr;
+    SDL_Haptic* haptic = nullptr;
+    LinuxRumble linux_rumble;
     std::array<bool, button_count> last{};
     bool last_exit_combo = false;
     std::array<int, button_count> raw_buttons{{0, 1, 2, 3, 4, 5, 6, 7, 9, 8, -1}};

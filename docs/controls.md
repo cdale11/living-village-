@@ -62,3 +62,11 @@ motivation and neural learning. A tile inspection shows soil moisture/nutrients,
 plant health/age, surface flood water and traffic compaction. Buildings show
 condition, delivered maintenance materials and repair work. No extra keyboard
 or mouse actions are required. See [ecology](ecology.md).
+
+On Wildlife, A follows the selected animal on the live map; D-pad camera
+movement releases it and L1/R1 returns to watching villagers. X on Sound /
+Vibration tests a brief audible tone and motor pulse and reports queued/sent
+status. World creation includes a population selector from 2 to 20.
+
+L1 on Sound / Vibration selects the audio output; the output name and format
+are shown, and the preference is stored under config without altering the OS.

@@ -42,6 +42,26 @@ bool World::spawn_animal(Species species, Point p, int parent) {
     animal.brain.initialize(seed ^ 0xa11a1U, animal.id);
     animals.push_back(animal); return true;
 }
+void World::recruit_wildlife() {
+    // Regional dispersal: a scarce species can recolonize a suitable boundary
+    // habitat. Weather, local forage and prey determine opportunity, not a scene.
+    if (animals.size() >= animal_limit || weather == Weather::Storm || weather == Weather::Heatwave) return;
+    std::array<int, 4> counts{}; for (const auto& a : animals) ++counts[static_cast<int>(a.species)];
+    for (int species = 0; species < 4; ++species) {
+        if (counts[species] >= (species == 2 ? 2 : 4) || eco_random(4) != 0) continue;
+        for (int attempt = 0; attempt < 16; ++attempt) {
+            const int side = eco_random(4), edge = 2 + eco_random(60);
+            Point p = side == 0 ? Point{2,edge} : side == 1 ? Point{61,edge} : side == 2 ? Point{edge,2} : Point{edge,61};
+            if (!passable(p.x,p.y)) continue;
+            const auto& t = tile(p.x,p.y);
+            const bool habitat = t.fire == 0 && t.plant_health > 50 && t.moisture > .18
+                && (species == 2 ? counts[0] + counts[1] >= 4 : species == 3 ? t.nectar > .2 : t.biomass > .4);
+            if (habitat && spawn_animal(static_cast<Species>(species), p)) {
+                event(std::string(species_name(static_cast<Species>(species))) + " arrives in suitable boundary habitat"); break;
+            }
+        }
+    }
+}
 void World::update_animals(double seconds) {
     const std::size_t initial_count = animals.size();
     // Reserve once to keep parents/references valid when offspring are appended.

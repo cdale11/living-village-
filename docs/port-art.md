@@ -4,18 +4,16 @@ The illustration was created for this project using OpenAI image generation
 on 2026-10-12 and is distributed under the project MIT license.
 
 The archive includes original 600x800 cover art at
-`/userdata/roms/ports/images/LivingVillage-image.png`.
+`/userdata/roms/ports/livingvillage/images/cover.png`.
 The launcher registers `./LivingVillage.sh` and its `<image>` metadata in the
 Ports `gamelist.xml` automatically. It does not overwrite a whole game list from
 an archive, so existing Ports entries and ratings remain intact.
 
-To register immediately after extraction, without opening the game:
+No registration command is required: extract the launcher and game folder,
+then launch Living Village once. Metadata registration runs automatically.
 
-```sh
-/userdata/roms/ports/livingvillage/scripts/register_art.sh
-```
-
-Then use EmulationStation's **Update Games Lists** option. If the active frontend
+EmulationStation may cache existing artwork until its next **Update Games Lists**
+or restart. If the active frontend
 writes an older cached gamelist back, run registration with EmulationStation
 stopped and start it again. Theme support determines where box art is displayed;
 select a game-list view with images enabled. Physical theme/display validation

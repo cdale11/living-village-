@@ -14,3 +14,13 @@ private:
 };
 int battery_percent();
 }
+
+namespace village {
+class ResourceMeter {
+public:
+    void sample(double wall_seconds);
+    double cpu_percent = -1, ram_mib = -1;
+private:
+    double last_wall = -1, last_cpu = 0;
+};
+}

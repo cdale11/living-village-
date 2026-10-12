@@ -35,6 +35,22 @@ double World::social_exchange(Villager& p, Villager& other) {
         remember(p, "Repaired trust with " + other.name); remember(other, "Repaired trust with " + p.name);
         event(p.name + " and " + other.name + " work on reconciliation");
     }
+    if (p.relationships[other.id] >= 0 && (p.cooperation >= .5 || p.relationships[other.id] >= 20)) {
+        auto share = [&](const std::vector<Point>& source, std::vector<Point>& destination) {
+            int gained = 0;
+            for (Point point : source) if (destination.size() < 48 && std::find(destination.begin(), destination.end(), point) == destination.end()) {
+                const auto& t = tile(point.x, point.y);
+                if ((t.terrain == Terrain::Bush && t.food > 0) || (t.terrain == Terrain::Tree && t.wood > 0) || t.stone > 0) { destination.push_back(point); ++gained; }
+            }
+            return gained;
+        };
+        const int gained = share(p.known_food, other.known_food) + share(p.known_wood, other.known_wood) + share(p.known_stone, other.known_stone);
+        if (gained) {
+            other.decision_timer = 0; reward += .04;
+            remember(other, p.name + " shared useful gathering locations");
+            event(p.name + " shares " + std::to_string(gained) + " resource locations with " + other.name);
+        }
+    }
     return reward;
 }
 void World::resource_conflict(Villager& p) {

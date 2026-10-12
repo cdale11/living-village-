@@ -11,11 +11,13 @@ never autosaves the unconfirmed preview. From a running village, use
 3. **Biome** — temperate, woodland, meadow, arid, taiga, rainforest, wetland or savanna.
 4. **Layout** — ponds, river, island, coast, highlands, lakes, peninsula, archipelago, delta, canyon, valley or plains.
 5. **Food** — lean (6 meals), standard (18) or generous (30) starting supplies.
-6. **Create this world** — generates and saves a new independent world.
-7. **Browse saved worlds** — opens the save manager.
+6. **Population** — 2 to 20 starting adults (default six); initial identities,
+   names, personalities and independent neural models are created for each.
+7. **Create this world** — generates and saves a new independent world.
+8. **Browse saved worlds** — opens the save manager.
 
 Use D-pad up/down to select a row. A edits the name/seed or cycles biome/layout;
-left/right also cycles biome/layout/food. The preview shows actual seeded terrain,
+left/right also cycles biome/layout/food/population. The preview shows actual seeded terrain,
 with the camp marked. Descriptions explain the selected climate and geography. In text/number editors, left/right moves
 between characters and up/down changes the selected character. A accepts,
 B cancels, and X clears a name character or chooses a random seed. X on the
@@ -66,9 +68,10 @@ reachable starting berry, wood and stone supplies.
   and drinking puddles. Drought is more challenging here.
 
 Eight biomes, twelve layouts and three food bundles provide 288 starting
-combinations per seed. Food choice changes only initial stock; saved quantities
-persist normally, with no continuing artificial resource bonus. Six villagers
-and guaranteed reachable starting resources remain standard.
+terrain/food combinations per seed, each with 19 population choices. Food choice changes only initial stock; saved quantities
+persist normally, with no continuing artificial resource bonus. The default is six villagers; population can be set to 2–20. Starting resources
+remain reachable, but larger groups compete for the same finite supplies.
+Population choice affects only world creation, never an existing save.
 
 Water blocks ordinary movement. Layouts and biome effects are actual simulation
 state; they are not only names or decorative previews.
@@ -137,7 +140,7 @@ including markers, worlds, backups and exports, before upgrades.
 ## Desktop/SSH commands
 
 ```sh
-./build/living-village --new --seed 123 --world-name 'Forest Isle' --biome woodland --layout island
+./build/living-village --new --seed 123 --world-name 'Forest Isle' --biome woodland --layout island --population 12
 ./build/living-village --headless --seed 123 --biome arid --layout highlands --steps 72000
 make worlds-smoke
 ```

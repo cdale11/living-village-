@@ -15,7 +15,7 @@ int main() {
         if (!renderer) throw std::runtime_error(sdl.GetError());
         sdl.RenderSetLogicalSize(renderer, 720, 480);
         sdl.SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        Renderer graphics(sdl, renderer); World world(42); View view;
+        { Renderer graphics(sdl, renderer); World world(42); View view;
         world.plan(BuildingKind::Farm, {30, 32});
         auto& farm = world.buildings.back(); farm.complete = true; farm.food = 6;
         world.plan(BuildingKind::Shelter, {34, 32});
@@ -66,6 +66,7 @@ int main() {
                 if (page == 7) graphics.screenshot("build/wildlife-preview.ppm");
             }
             sdl.RenderPresent(renderer);
+        }
         }
         sdl.DestroyRenderer(renderer); sdl.DestroyWindow(window); sdl.Quit();
         std::cout << "PASS: map, buildings, planning, inspection and controller panels at 720x480\n";

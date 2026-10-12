@@ -93,7 +93,7 @@ std::string value(const std::string& xml, const Element& e) {
 }
 void register_port_art(const std::filesystem::path& ports) {
     require(std::filesystem::is_directory(ports), "Ports directory does not exist");
-    require(std::filesystem::is_regular_file(ports / "LivingVillage.sh") && std::filesystem::is_regular_file(ports / "images/LivingVillage-image.png"), "Install launcher and cover before registration");
+    require(std::filesystem::is_regular_file(ports / "LivingVillage.sh") && std::filesystem::is_regular_file(ports / "livingvillage/images/cover.png"), "Install launcher and cover before registration");
     File lock{::open((ports / ".living-village-art.lock").c_str(), O_WRONLY | O_CREAT | O_NOFOLLOW, 0600)};
     require(lock.fd >= 0 && ::flock(lock.fd, LOCK_EX | LOCK_NB) == 0, "Frontend registration already running or lock unavailable");
     const auto path = ports / "gamelist.xml";
@@ -113,7 +113,7 @@ void register_port_art(const std::filesystem::path& ports) {
             }
     }
     std::string after = before;
-    const std::string art = "<image>./images/LivingVillage-image.png</image>";
+    const std::string art = "<image>./livingvillage/images/cover.png</image>";
     if (game >= 0) {
         for (std::size_t i = game + 1; i < elements.size() && elements[i].start < elements[game].finish; ++i) if (elements[i].parent == game) {
             if (elements[i].name == "image") { require(image < 0, "Duplicate image fields"); image = static_cast<int>(i); }
