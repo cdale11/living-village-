@@ -106,8 +106,10 @@ not part of this release.
 Completed structures have persistent condition. Ordinary exposure, rain, storms,
 floods, fire and shelter use cause wear. Below 85%, residents can gather, withdraw,
 physically deliver and work on maintenance using their existing material/build
-skills and learned goals. Each repair consumes one wood and one stone (farms and
-campfires only use wood), requires eight work units and restores 25 condition.
+skills and learned goals. Each repair consumes one wood, requires eight work units and restores 25
+condition. Severe structural damage below 50% also needs one stone, except for
+farms/campfires. Routine patching uses renewable wood so ordinary upkeep does not
+inevitably exhaust finite quarries; disasters can still make recovery costly.
 Unsafe buildings at 20% stop supplying beds/storage; excess storage contents spill
 into the actual communal ground cache. Farms and shelter rest efficiency scale
 with condition. Buildings stay at stable IDs when ruined so families and saved

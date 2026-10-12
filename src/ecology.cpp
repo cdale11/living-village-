@@ -227,7 +227,7 @@ void World::update_ecology(double seconds) {
     update_animals(seconds);
 }
 int World::repair_wood_needed(const Building& b) const { return b.complete && b.condition < 85 ? std::max(0, 1 - b.repair_wood) : 0; }
-int World::repair_stone_needed(const Building& b) const { return b.complete && b.condition < 85 && b.kind != BuildingKind::Farm && b.kind != BuildingKind::Campfire ? std::max(0, 1 - b.repair_stone) : 0; }
+int World::repair_stone_needed(const Building& b) const { return b.complete && b.condition < 50 && b.kind != BuildingKind::Farm && b.kind != BuildingKind::Campfire ? std::max(0, 1 - b.repair_stone) : 0; }
 bool World::repair(Villager& p, Building& b, double dt) {
     if (!b.complete || b.condition >= 85 || repair_wood_needed(b) || repair_stone_needed(b)) return false;
     b.repair_work += dt * (.75 + p.build_skill); practice_work(p, Goal::Build, dt / 2);

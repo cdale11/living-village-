@@ -10,7 +10,8 @@ ageing and migration are documented in [population rules](population.md).
 
 Utility selection and action execution are separate. Decisions are reevaluated
 on arrival, after completed actions and approximately every five seconds,
-staggered by ID. Movement runs at 1.6 tiles per simulated second; each update
+staggered by ID. Base movement runs at 1.6 tiles per simulated second, modified
+by flooded ground and worn paths; each update
 carries leftover movement across tile boundaries using a bounded loop. Water
 blocks navigation; trees, stone, crops and buildings remain walkable.
 
@@ -59,6 +60,7 @@ materials are physically collected at camp before transport to a site.
 | Stockpile | 8 | 4 | 16 | Adds 20 to each central wood/stone capacity |
 | Farm plot | 6 | 2 | 12 | Renewable crops, harvested into villager inventory |
 | Campfire | 4 | 2 | 8 | Fuelled warmth and better social comfort nearby |
+| Workshop | 12 | 8 | 28 | Supplied research unlocks two technologies |
 
 Construction work cannot advance until all required resources arrive. Workers
 contribute `0.75 + building skill` work units per second. Completion consumes
@@ -92,21 +94,24 @@ four agents assigned to each shelter at a time.
 Adult hunger rises by 0.12 and energy falls by 0.065 per second. Children
 have lower rates, described in the population rules. A one-second eating
 action consumes one food and reduces hunger by 45. Rest recovers 1.8 energy per
-second at camp, 3.2 inside completed shelter or 0.8 elsewhere, with 0.3 extra
+second at camp, up to 3.2 inside a healthy shelter or 0.8 elsewhere, with 0.3 extra
 near a fuelled fire. Hunger 99+ reduces health by 0.25 per second; otherwise
 health recovers by 0.02. Death is persistent and logged. Severe shortages can
 collapse the settlement.
 
-Bushes hold six food and regrow one every 80 seconds. Trees hold six wood and
-regrow one every 240 seconds; depleted trees display as stumps. Stone deposits
-hold eight units and do not regenerate. Farms hold twelve ripe food and grow
-two every 45 seconds, requiring a three-second harvesting action modified by
-farming skill. Crop and wild plant growth both use seasonal/weather rates.
+Bushes hold six food and accumulate 80 growth units per replacement fruit. Trees
+hold six wood and require 240 growth units; depleted living trees display as
+stumps and gradually coppice. Stone deposits hold eight units and do not regenerate;
+weathering can move remaining stone into loose caches. Farms hold twelve ripe food
+and require 45 growth units per two food, with a three-second harvest modified by
+skill. Soil moisture, temperature, nutrients, health, traffic, pollination and
+building condition affect actual growth, in addition to seasonal/biome rates.
 
 A day is 240 seconds (2400 fixed steps). Seasons each last ten days; growth
 multipliers are spring 1.0, summer 1.2, autumn 0.9, winter 0.5. Deterministic
-seed/day weather makes roughly two days in seven rainy; rain multiplies growth
-by 1.15. Day/night tint remains independent of agent work schedules. Villagers
+daily weather chooses clear, rain, storms, snow or heatwaves according to biome
+and season; rain multiplies baseline growth by 1.15 and physically supplies water.
+Day/night tint remains independent of agent work schedules. Villagers
 collect fuel at camp or use carried wood and physically deliver it to a low
 campfire. Refuelling consumes one carried wood and adds 240 seconds of fuel.
 No fuel means no fire comfort.
@@ -119,7 +124,7 @@ Relationships are bounded and each villager keeps six significant experiences.
 
 ## Persistence and bounds
 
-Version 6 saves record all resources, buildings, invested materials, progress,
+Version 7 saves record all resources, buildings, invested materials, progress,
 contributors, crops, fuel, gathering areas, skills, relationships, experiences,
 goals/targets, paths, memories, settings and PRNG state. Version 1 saves upgrade
 on load, preserving old villagers/time/inventories/terrain/goals/PRNG and adding
@@ -146,3 +151,11 @@ Version 6 adds named-world and generation metadata without regenerating old
 terrain. Climate multipliers and resource distributions for the four biomes,
 and water/mineral geometry for the five layouts, are documented in
 [world-management.md](world-management.md).
+
+Version 7 adds persisted soil/plant biology, weather, water flow/snow, terrain
+wear, fire, animal physiology/genetics/learning and structure condition/repairs.
+Up to 48 wildlife entities run at a one-second ecology cadence. Shared maintenance
+needs use real inventory delivery and work; routine patching uses renewable wood,
+while severe structural damage also requires stone. Unsafe shelter/storage loses
+its effect and actual excess supplies spill into the communal ground cache.
+See [ecology](ecology.md) for coupled rules, model limits and inspection controls.

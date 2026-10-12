@@ -69,11 +69,12 @@ int main() {
         check(birth.animals[1].metabolism >= .95 && birth.animals[1].metabolism <= 1.05, "Metabolic traits did not inherit from both parents");
         while (birth.animals.size() < animal_limit) birth.spawn_animal(Species::Deer, {12, 12});
         check(!birth.spawn_animal(Species::Deer, {12, 12}), "Wildlife population exceeded its bound");
-        auto repair = World(9); auto& site = repair.buildings[0]; site.condition = 50;
+        auto repair = World(9); auto& site = repair.buildings[0]; site.condition = 30;
         check(!repair.repair(repair.villagers[0], site, 1), "Repair completed without materials");
         site.repair_wood = site.repair_stone = 1;
         for (int n = 0; n < 20 && repair.ecology.repairs == 0; ++n) repair.repair(repair.villagers[0], site, 1);
-        check(site.condition == 75 && site.repair_wood == 0 && site.repair_stone == 0 && repair.ecology.repairs == 1, "Repair did not consume materials and work");
+        check(site.condition == 55 && site.repair_wood == 0 && site.repair_stone == 0 && repair.ecology.repairs == 1, "Repair did not consume materials and work");
+        check(repair.repair_stone_needed(site) == 0, "Routine patching still exhausted finite quarries");
         World maintenance(90); maintenance.villagers.resize(1); maintenance.auto_develop = maintenance.population_growth = false;
         maintenance.buildings[0].condition = 60; maintenance.food_stock = 30;
         auto& builder = maintenance.villagers[0]; builder.hunger = 0; builder.energy = 100; builder.wood = builder.stone = 1; builder.cooperation = 1; builder.decision_timer = 0;
