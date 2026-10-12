@@ -1,7 +1,8 @@
 # Ready-to-install ARM64 build
 
 `living-village-knulli-arm64.tar.gz` contains the native executable and KNULLI
-Ports launcher. It is built from source milestone **12c5d5e** with Zig 0.13.0,
+Ports launcher. Gameplay is built from source milestone **12c5d5e**, with
+diagnostic scripts/documentation from **12340f7**, using Zig 0.13.0,
 targeting Cortex-A53, AArch64 Linux, glibc 2.17+. All gameplay code is C++17.
 
 Download the archive using GitHub's **Download raw file**, then extract into
@@ -33,6 +34,12 @@ and the 3,500-day simulation regressions pass on desktop with GCC and the SDK
 runtime. The ARM64 binary is cross compiled; this expanded build still needs
 physical button/display/performance validation on the handheld.
 See the root [README](../README.md) and [device guide](../docs/knulli.md).
+
+The archive now includes `livingvillage/scripts/diagnose_knulli.sh` for system,
+CPU, graphics and input reports in `logs/`. These measurements use temporary
+worlds and leave player saves untouched. All 40 two-seed biome/layout desktop
+surveys completed 100 days with 15–19 survivors; this is not a device benchmark.
+Copy the new `scripts/` directory as well when upgrading just the executable.
 
 To upgrade an existing installation, replace only
 `/userdata/roms/ports/livingvillage/bin/living-village` with the executable in
