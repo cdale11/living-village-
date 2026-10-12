@@ -1,7 +1,7 @@
 # Ready-to-install ARM64 build
 
 `living-village-knulli-arm64.tar.gz` contains the native executable and KNULLI
-Ports launcher. It is built from source milestone **068856a** with Zig 0.13.0,
+Ports launcher. It is built from source milestone **ffc48f2** with Zig 0.13.0,
 targeting Cortex-A53, AArch64 Linux, glibc 2.17+. All gameplay code is C++17.
 
 Download the archive using GitHub's **Download raw file**, then extract into
@@ -17,21 +17,23 @@ sha256sum -c packages/SHA256SUMS
 
 Desktop simulation and SDL input/rendering tests pass. The binary's ARM64
 architecture and glibc symbol baseline have been inspected. The user confirmed
-the initial release runs on KNULLI. This update adds **households and generations**:
-relationship-based partnerships, inherited traits, births, physical child care,
-conditional arrivals, ageing, deaths and recoverable carried supplies.
-Stable IDs and bounded history support long-running villages. Family/population
-pages, birth/arrival controls and new/previous village switching are available
-entirely through the controller. **Fn+Start save-and-exit is retained.**
-The expanded build still needs physical confirmation. The OS provides its
-existing SDL2 runtime.
+the initial release runs on KNULLI. This update adds **online neural learning**:
+every resident has an independent 37-input, 12-hidden-unit C++ MLP trained during
+play from actual outcomes. Learned values influence valid action choices; weights
+and pending experiences persist in saves. X's fifth page shows model effects;
+Y's fourth page freezes/resumes training. No network or ML runtime is required.
+KNULLI is the handheld target. **Fn+Start save-and-exit is retained.**
+Neural adaptation, reward reversal, old-save migration, deterministic resumption,
+controller/rendering, sanitizer checks and learning-enabled 3,500-day regressions
+pass on desktop with GCC and the SDK's C++ runtime. The expanded ARM64 build
+still needs physical confirmation. The OS provides its existing SDL2 runtime.
 See the root [README](../README.md) and [device guide](../docs/knulli.md).
 
 To upgrade an existing installation, replace only
 `/userdata/roms/ports/livingvillage/bin/living-village` with the executable in
 this archive and ensure it remains executable. Keep your saves and config.
-Version 1 and 2 saves load and upgrade automatically to version 3; older binaries
+Version 1, 2 and 3 saves load and upgrade automatically to version 4; older binaries
 cannot read newly upgraded saves. A examines tiles/plans and gathering areas,
-X opens the villager inspector (left/right for family/details), and Y opens the
-overview (left/right for population/history, A toggles planning or growth).
+X opens the villager inspector (left/right for family/MLP/details), and Y opens
+the overview (left/right for population/history/learning, A toggles settings).
 Back up the whole saves folder before upgrading.
