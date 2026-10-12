@@ -25,6 +25,9 @@ struct Brain {
     std::uint32_t random_state = 1;
     std::uint64_t episodes = 0, replay_updates = 0, experiments = 0;
     double selected_exploration = 0;
+    std::uint64_t session_predictions = 0, session_updates = 0, session_changed_updates = 0;
+    double session_weight_change = 0;
+    double evaluate(const BrainInput& input);
     Brain();
     void initialize(std::uint32_t world_seed, int person_id);
     double predict(const BrainInput& input) const;

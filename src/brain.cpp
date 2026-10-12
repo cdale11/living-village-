@@ -27,9 +27,14 @@ void Brain::initialize(std::uint32_t world_seed, int person_id) {
     }
     random_state = state; replay = {}; replay_size = replay_head = 0;
     episodes = replay_updates = experiments = 0; selected_exploration = 0;
+    session_predictions = session_updates = session_changed_updates = 0; session_weight_change = 0;
     pending.fill(0); active = false; action = 0; updates = 0;
     elapsed = progress = start_hunger = start_energy = start_health = start_loneliness = 0;
     last_reward = last_prediction = last_error = selected_base = selected_adjustment = 0;
+}
+double Brain::evaluate(const BrainInput& input) {
+    if (session_predictions < 100000000000ULL) ++session_predictions;
+    return predict(input);
 }
 double Brain::predict(const BrainInput& input) const {
     const auto hidden = activate(*this, input);
@@ -44,8 +49,11 @@ void Brain::train(const BrainInput& input, double reward, double rate) {
     const double prediction = predict(input);
     const double target = std::clamp(reward, -1.0, 1.0);
     const double delta = std::clamp((prediction - target) * (1 - prediction * prediction), -1.0, 1.0);
+    double weight_change = 0;
     auto adjust = [&](int index, double gradient) {
+        const double before = weights[index];
         weights[index] = std::clamp(weights[index] - rate * std::clamp(gradient, -1.0, 1.0), -3.0, 3.0);
+        weight_change += std::abs(weights[index] - before);
     };
     // Hidden gradient must use output weights from before the update.
     for (int h = 0; h < brain_hidden; ++h) {
@@ -56,6 +64,9 @@ void Brain::train(const BrainInput& input, double reward, double rate) {
     }
     for (int h = 0; h < brain_hidden; ++h) adjust(output_offset + h, delta * hidden[h]);
     adjust(brain_weights - 1, delta);
+    session_weight_change = weight_change;
+    if (session_updates < 100000000000ULL) ++session_updates;
+    if (weight_change > 0 && session_changed_updates < 100000000000ULL) ++session_changed_updates;
     if (updates < 100000000000ULL) ++updates;
     last_prediction = prediction; last_reward = target; last_error = target - prediction;
 }

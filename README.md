@@ -35,7 +35,9 @@ ssh root@DEVICE_IP 'tar -xzf /userdata/living-village-knulli-arm64.tar.gz -C /us
 
 All files and saves stay on `/userdata`; installation does not modify the system partition. On upgrades, replace the launcher and `bin/`, preserving your `saves/` and customized `config/`. The archive contains empty save/log directories, with no save file.
 
-The user confirmed the initial ARM64 release runs on KNULLI. This ecology update is cross compiled and tested on desktop, and still needs physical validation on the handheld. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
+The archive includes original Ports cover art. Registration runs on launch; to install its game-list metadata immediately, run `/userdata/roms/ports/livingvillage/scripts/register_art.sh`, then **Update Games Lists** in EmulationStation. See [artwork setup](docs/port-art.md).
+
+The user confirmed the initial ARM64 release runs on KNULLI. The user also confirmed the ecology game loads and Fn+Start exits correctly. This customization/graphics/diagnostics update is cross compiled and tested on desktop; its new screens, artwork and performance still need physical validation. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
 
 The archive also includes `livingvillage/scripts/diagnose_knulli.sh`. Run it with
 `system`, `cpu`, `graphics` or `input` to create an offline diagnostic report in
@@ -44,7 +46,7 @@ for display-session requirements and the 40-world headless survey command.
 
 ## What you can play
 
-- Create seeded 64×64 worlds with four biomes and five geographical layouts.
+- Create seeded 64×64 worlds with eight biomes, twelve geographical layouts and three starting-food bundles.
 - Manage up to 32 named worlds: load, rename, snapshot and confirm deletion of old saves.
 - Observe six named villagers gathering food, wood and stone, building, farming, eating, resting and socializing.
 - Watch shared needs produce real construction plans, material deliveries and cooperative work.
@@ -71,7 +73,7 @@ state or structure condition. No offline progression or internet is required.
 
 Move the camera reticle to a tile and press **A**. On empty grass, press A again to choose one of six buildings, then A to place the plan. Villagers gather and physically deliver the required materials before building. On a tree, bush or stone tile, A toggles a 5×5 gathering area; survival and competing village needs still affect their choices.
 
-**X** inspects the selected villager; left/right on the D-pad cycles needs/reasons, skills/personality, relationships/experiences, household/family, neural learning, and replay/work practice. **L1/R1** switches villagers and follows them. **Y** opens the village overview; A there toggles autonomous new construction plans. Left/right cycles village, population and event pages; A on the population page toggles births/arrivals. The fourth overview page controls online neural training; the fifth exports history/statistics; the sixth controls volume (A) and vibration (R1). Existing plans still receive work when automatic planning is disabled. Start opens world creation and Manage saved worlds. First launch waits for name, seed, biome and layout selection. Existing current/previous saves appear alongside named worlds. Trees display stumps when depleted, and construction tiles show work progress.
+**X** inspects the selected villager; left/right on the D-pad cycles needs/reasons, skills/personality, relationships/experiences, household/family, neural learning, and replay/work practice. **L1/R1** switches villagers and follows them. **Y** opens the village overview; A there toggles autonomous new construction plans. Left/right cycles village, population and event pages; A on the population page toggles births/arrivals. The fourth overview page shows live AI diagnostics and controls online neural training; the ninth shows individual agent diagnostics. These two pages keep simulation running; Start pauses. the fifth exports history/statistics; the sixth controls volume (A) and vibration (R1). Existing plans still receive work when automatic planning is disabled. Start opens world creation and Manage saved worlds. First launch waits for name, seed, biome, layout and starting-food selection, with an actual seeded terrain preview. Existing current/previous saves appear alongside named worlds. Trees display stumps when depleted, and construction tiles show work progress.
 
 ## Handheld controls
 
@@ -130,6 +132,6 @@ A versioned text save with checksum records world name/generation settings, neur
 
 Verified on x86 Linux: GCC and LLVM libc++ simulation suites, SDL dummy rendering, virtual controller/Fn+Start mapping, old-save migration, deterministic continuation, corruption recovery, physical resource delivery and child care, construction, households, births, immigration, identity safety and bounded history. A 3,500-day regression finishes with 20 survivors after births and deaths. Neural regressions verify learned action changes, reward reversal, bounded replay, live updates, training pause/resume and exact learning continuation. Society tests cover earned occupations, physical barter/sharing, conflicts/reconciliation, workshop costs/effects, and escaped CSV exports. Original PCM, dummy SDL audio and temporary save-safe graphical benchmarks are tested. Address/undefined-behavior sanitizer checks pass. The ARM64 executable is cross compiled; these are **not handheld performance results**.
 
-[World creation/save management](docs/world-management.md) · [Priority status](docs/priorities.md) · [Society and technology](docs/society.md) · [Device measurement](docs/device-validation.md) · [Neural learning](docs/neural-learning.md) · [Population rules](docs/population.md) · [Architecture](docs/architecture.md) · [Simulation rules](docs/simulation-design.md) · [KNULLI checks](docs/knulli.md)
+[Live AI diagnostics](docs/ai-diagnostics.md) · [Ports cover art](docs/port-art.md) · [World creation/save management](docs/world-management.md) · [Priority status](docs/priorities.md) · [Society and technology](docs/society.md) · [Device measurement](docs/device-validation.md) · [Neural learning](docs/neural-learning.md) · [Population rules](docs/population.md) · [Architecture](docs/architecture.md) · [Simulation rules](docs/simulation-design.md) · [KNULLI checks](docs/knulli.md)
 
 Original code, generated graphics and procedural audio: MIT. SDL2 headers: zlib, notice in `vendor/SDL2/LICENSE.txt`. The ARM64 binary includes LLVM libc++/ABI (Apache 2.0 with LLVM exceptions) and Zig runtime (MIT); notices are shipped in the package's `licenses/` directory.

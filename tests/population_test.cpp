@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
         check(ui.update(press, upgraded, .033) == Request::ToggleGrowth, "Controller could not toggle population growth");
         ui.view.panel = Panel::Menu; ui.view.menu_index = 5;
         check(ui.update(press, upgraded, .033) == Request::None && ui.view.panel == Panel::NewVillage, "New world skipped the confirmation panel");
-        ui.view.menu_index = 4;
+        ui.view.menu_index = 5;
         check(ui.update(press, upgraded, .033) == Request::None && ui.view.panel == Panel::ConfirmCreate, "Creator skipped confirmation");
         check(ui.update(press, upgraded, .033) == Request::NewVillage, "Controller could not confirm a new village");
         press = {}; press.exit_requested = true;

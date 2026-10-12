@@ -1,4 +1,5 @@
 #include "living_village/input.hpp"
+#include "living_village/port_art.hpp"
 #include "living_village/feedback.hpp"
 #include "living_village/performance.hpp"
 #include "living_village/render.hpp"
@@ -20,13 +21,13 @@ namespace {
 volatile std::sig_atomic_t stop_requested = 0;
 void signal_stop(int) { stop_requested = 1; }
 struct Options {
-    bool fullscreen = false, headless = false, no_save = false, new_world = false, diagnose = false, profile = false;
+    bool ai_diagnostics = false, fullscreen = false, headless = false, no_save = false, new_world = false, diagnose = false, profile = false;
     std::uint32_t seed = 20261011;
     village::Biome biome = village::Biome::Temperate;
     village::Geography geography = village::Geography::Ponds;
     std::string world_name = "New Village";
-    int frames = 0, steps = 24000, benchmark_villagers = 0;
-    std::string save_dir = "saves", screenshot;
+    int frames = 0, steps = 24000, benchmark_villagers = 0, starting_food = 18;
+    std::string save_dir = "saves", screenshot, art_ports;
 };
 std::uint32_t seed_value(const std::string& value) {
     if (value.empty() || value.size() > 10 || value.find_first_not_of("0123456789") != std::string::npos) throw std::runtime_error("Seed must be 0 to 4294967295");
@@ -39,9 +40,12 @@ Options options(int argc, char** argv) {
         const std::string arg = argv[i];
         auto value = [&]() { if (++i >= argc) throw std::runtime_error("Missing value for " + arg); return std::string(argv[i]); };
         if (arg == "--fullscreen") result.fullscreen = true;
+        else if (arg == "--ai-diagnostics") result.ai_diagnostics = true;
+        else if (arg == "--starting-food") { result.starting_food = std::stoi(value()); if (result.starting_food != 6 && result.starting_food != 18 && result.starting_food != 30) throw std::runtime_error("Starting food: 6, 18 or 30"); }
         else if (arg == "--headless") result.headless = true;
         else if (arg == "--no-save") result.no_save = true;
         else if (arg == "--new") result.new_world = true;
+        else if (arg == "--register-port-art") result.art_ports = value();
         else if (arg == "--profile") result.profile = true;
         else if (arg == "--benchmark-villagers") { result.benchmark_villagers = std::stoi(value()); result.no_save = true; result.new_world = true; result.profile = true; }
         else if (arg == "--diagnose-input") result.diagnose = true;
@@ -50,11 +54,11 @@ Options options(int argc, char** argv) {
         else if (arg == "--biome") {
             const auto name = value(); bool found = false;
             for (int b = 0; b < village::biome_count; ++b) { std::string label = village::biome_name(static_cast<village::Biome>(b)); for (char& c : label) c = static_cast<char>(std::tolower(c)); if (label == name) { result.biome = static_cast<village::Biome>(b); found = true; } }
-            if (!found) throw std::runtime_error("Biome: temperate, woodland, meadow or arid");
+            if (!found) throw std::runtime_error("Biome: temperate, woodland, meadow, arid, taiga, rainforest, wetland, savanna");
         } else if (arg == "--layout") {
             const auto name = value(); bool found = false;
             for (int g = 0; g < village::geography_count; ++g) { std::string label = village::geography_name(static_cast<village::Geography>(g)); for (char& c : label) c = static_cast<char>(std::tolower(c)); if (label == name) { result.geography = static_cast<village::Geography>(g); found = true; } }
-            if (!found) throw std::runtime_error("Layout: ponds, river, island, coast or highlands");
+            if (!found) throw std::runtime_error("Layout: ponds, river, island, coast, highlands, lakes, peninsula, archipelago, delta, canyon, valley, plains");
         }
         else if (arg == "--steps") result.steps = std::stoi(value());
         else if (arg == "--frames") result.frames = std::stoi(value());
@@ -63,8 +67,10 @@ Options options(int argc, char** argv) {
         else if (arg == "--help") {
             std::cout << "Living Village C++ / SDL2\n"
                       << "--fullscreen --seed N --save-dir PATH --new --no-save\n"
-                      << "--world-name NAME --biome temperate|woodland|meadow|arid\n"
-                      << "--layout ponds|river|island|coast|highlands\n"
+                      << "--world-name NAME --biome temperate|woodland|meadow|arid|taiga|rainforest|wetland|savanna\n"
+                      << "--layout ponds|river|island|coast|highlands|lakes|peninsula|archipelago|delta|canyon|valley|plains\n"
+                      << "--starting-food 6|18|30 --ai-diagnostics (live panel)\n"
+                      << "--register-port-art PORTS_DIRECTORY (no SDL needed)\n"
                       << "--headless --steps N   (no display, SDL or save writes)\n"
                       << "--diagnose-input --frames N --screenshot FILE.ppm\n"
                       << "--profile --benchmark-villagers N (6..20, temporary world, no saves)\n";
@@ -80,7 +86,8 @@ int main(int argc, char** argv) {
     using namespace village;
     try {
         const Options config = options(argc, argv);
-        World world(config.seed, config.biome, config.geography); world.world_name = config.world_name;
+        if (!config.art_ports.empty()) { register_port_art(config.art_ports); return 0; }
+        World world(config.seed, config.biome, config.geography); world.world_name = config.world_name; world.food_stock = config.starting_food;
         if (config.benchmark_villagers) {
             world.population_growth = false;
             while (static_cast<int>(world.villagers.size()) < config.benchmark_villagers) {
@@ -105,7 +112,7 @@ int main(int argc, char** argv) {
         SaveCatalog catalog(config.save_dir);
         Interface ui; bool ready = config.no_save;
         std::string active_id;
-        ui.view.draft_seed = config.seed; ui.view.draft_biome = config.biome; ui.view.draft_geography = config.geography; ui.view.draft_name = config.world_name;
+        ui.view.draft_seed = config.seed; ui.view.draft_biome = config.biome; ui.view.draft_geography = config.geography; ui.view.draft_name = config.world_name; ui.view.draft_supplies = config.starting_food == 6 ? 0 : config.starting_food == 30 ? 2 : 1;
         if (!config.no_save) {
             active_id = catalog.active();
             if (active_id.empty() && catalog.exists("default")) active_id = "default";
@@ -116,7 +123,7 @@ int main(int argc, char** argv) {
             }
             if (config.new_world) {
                 try {
-                    World fresh(config.seed, config.biome, config.geography); fresh.world_name = config.world_name;
+                    World fresh(config.seed, config.biome, config.geography); fresh.world_name = config.world_name; fresh.food_stock = config.starting_food;
                     const auto id = catalog.create(fresh); catalog.activate(id); active_id = id; world = std::move(fresh); ready = true;
                 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); ui.view.panel = Panel::Saves; }
             }
@@ -167,6 +174,7 @@ int main(int argc, char** argv) {
         };
         std::mt19937 creation_rng(static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count()));
         auto reset_view = [&]() { ui = Interface{}; ui.view.has_world = ready; ui.view.active_slot = active_id; ui.view.speed = world.simulation_speed; accumulator = 0; };
+        if (config.ai_diagnostics && ready) { ui.view.panel = Panel::Overview; ui.view.overview_page = 3; }
         while (running && !stop_requested) {
             const auto frame_start = std::chrono::steady_clock::now();
             int frame_steps = 0;
@@ -179,7 +187,7 @@ int main(int argc, char** argv) {
                 const bool benchmark_focus = config.benchmark_villagers && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST;
                 if (benchmark_focus) std::cout << "Benchmark: ignoring window focus loss in temporary diagnostic world\n";
                 if (!benchmark_focus && ((event.type == SDL_APP_WILLENTERBACKGROUND || event.type == SDL_APP_DIDENTERBACKGROUND) || (event.type == SDL_WINDOWEVENT && (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST || event.window.event == SDL_WINDOWEVENT_MINIMIZED)))) {
-                    if (ui.view.panel == Panel::Map) { ui.view.panel = Panel::Menu; ui.view.menu_index = 0; }
+                    if (ui.view.simulation_running()) { ui.view.panel = Panel::Menu; ui.view.menu_index = 0; }
                     save(); accumulator = 0;
                 }
                 input.handle(event);
@@ -224,6 +232,7 @@ int main(int argc, char** argv) {
             } else if (request == Request::NewVillage) {
                 try {
                     World fresh(ui.view.draft_seed, ui.view.draft_biome, ui.view.draft_geography); fresh.world_name = ui.view.draft_name;
+                    const int starting_food[] = {6, 18, 30}; fresh.food_stock = starting_food[ui.view.draft_supplies];
                     if (!save()) throw std::runtime_error("Current world could not save - creation cancelled");
                     std::string id;
                     if (!config.no_save) { id = catalog.create(fresh); catalog.activate(id); }
@@ -271,7 +280,7 @@ int main(int argc, char** argv) {
             }
             ui.view.selected = std::clamp(ui.view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
             const int watched_id = world.villagers[ui.view.selected].id;
-            if (ui.view.panel == Panel::Map) {
+            if (ui.view.simulation_running()) {
                 accumulator += elapsed * ui.view.speed;
                 int steps = 0;
                 while (accumulator >= fixed_step && steps++ < 8) { ++frame_steps; world.update(); accumulator -= fixed_step; }

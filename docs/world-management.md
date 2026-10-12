@@ -8,13 +8,15 @@ never autosaves the unconfirmed preview. From a running village, use
 
 1. **Name** — up to 24 letters, numbers, spaces or hyphens.
 2. **Seed** — any unsigned 32-bit number, including zero (`0–4294967295`).
-3. **Biome** — temperate, woodland, meadow or arid.
-4. **Layout** — ponds, river, island, coast or highlands.
-5. **Create this world** — generates and saves a new independent world.
-6. **Browse saved worlds** — opens the save manager.
+3. **Biome** — temperate, woodland, meadow, arid, taiga, rainforest, wetland or savanna.
+4. **Layout** — ponds, river, island, coast, highlands, lakes, peninsula, archipelago, delta, canyon, valley or plains.
+5. **Food** — lean (6 meals), standard (18) or generous (30) starting supplies.
+6. **Create this world** — generates and saves a new independent world.
+7. **Browse saved worlds** — opens the save manager.
 
 Use D-pad up/down to select a row. A edits the name/seed or cycles biome/layout;
-left/right also cycles biome/layout. In text/number editors, left/right moves
+left/right also cycles biome/layout/food. The preview shows actual seeded terrain,
+with the camp marked. Descriptions explain the selected climate and geography. In text/number editors, left/right moves
 between characters and up/down changes the selected character. A accepts,
 B cancels, and X clears a name character or chooses a random seed. X on the
 creator also chooses a random seed. No keyboard is needed.
@@ -35,6 +37,10 @@ not promised identical.
 | Woodland | 28% / 4.5% / 9% | 1.10 | Darker forest ground |
 | Meadow | 6.5% / 3.5% / 9.5% | 1.05 | Brighter grassland |
 | Arid | 5.5% / 9% / 3% | 0.65 | Sandy, sparse landscape |
+| Taiga | 24% / 7.5% / 5% | 0.72 | Conifers, cool climate (-9 C offset) |
+| Rainforest | 35% / 2.5% / 12% | 1.20 | Warm (+7 C), frequent rain |
+| Wetland | 12% / 2.5% / 10% | 1.12 | Initially wetter soil, frequent rain |
+| Savanna | 8% / 5.5% / 6.5% | 0.85 | Warm (+6 C), drier grassland |
 
 These rates are initial rolls before geographical masks and starter guarantees.
 Season/rain and irrigation modifiers still apply. Arid worlds require more care
@@ -49,6 +55,20 @@ reachable starting berry, wood and stone supplies.
 - **Coast:** a winding eastern coastline with inland land available for growth.
 - **Highlands:** stone-rich diagonal ridges and passable valleys. This is mineral
   geography, not a new elevation/mountain movement system; stone remains walkable.
+
+- **Lakes:** two broad lakes around a connected camp area.
+- **Peninsula:** a long tongue of land narrowing towards the south.
+- **Archipelago:** a central habitable island plus separate wildlife islets.
+- **Delta:** branching river channels with land crossings.
+- **Canyon:** narrow river with walkable stone walls and greater elevation.
+- **Valley:** river beside sloping valley terrain.
+- **Plains:** continuous land without permanent water; rainfall supplies soil water
+  and drinking puddles. Drought is more challenging here.
+
+Eight biomes, twelve layouts and three food bundles provide 288 starting
+combinations per seed. Food choice changes only initial stock; saved quantities
+persist normally, with no continuing artificial resource bonus. Six villagers
+and guaranteed reachable starting resources remain standard.
 
 Water blocks ordinary movement. Layouts and biome effects are actual simulation
 state; they are not only names or decorative previews.

@@ -105,13 +105,13 @@ void World::update_animals(double seconds) {
             }
             a.action = AnimalAction::Wander; a.target_id = -1; a.destination = here; a.reason = "Exploring nearby habitat";
             BrainInput chosen = animal_observations(a, a.action, cell, 0, 20, temperature);
-            double base = 20, adjustment = 10 * a.brain.predict(chosen), score = base + adjustment;
+            double base = 20, adjustment = 10 * a.brain.evaluate(chosen), score = base + adjustment;
             auto consider = [&](AnimalAction action, Point p, double utility, const char* reason, int target = -1) {
                 if (!passable(p.x, p.y)) return;
                 const double trip = distance(a.x, a.y, p);
                 if (utility + 10 - trip * 2 <= score) return;
                 const auto input = animal_observations(a, action, tile(p.x, p.y), trip, utility, temperature);
-                const double bonus = 10 * a.brain.predict(input), value = utility + bonus - trip * 2;
+                const double bonus = 10 * a.brain.evaluate(input), value = utility + bonus - trip * 2;
                 if (value <= score) return;
                 // Local wildlife never launches full-map BFS. Check a bounded route
                 // only for the final candidate via greedy one-cell movement below.

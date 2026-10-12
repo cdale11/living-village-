@@ -54,7 +54,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         }
         return Request::None;
     }
-    if (input.hit(Button::Menu)) { view.panel = view.panel == Panel::Map ? Panel::Menu : (view.has_world ? Panel::Map : Panel::Menu); view.menu_index = 0; }
+    if (input.hit(Button::Menu)) { view.panel = view.simulation_running() ? Panel::Menu : (view.has_world ? Panel::Map : Panel::Menu); view.menu_index = 0; }
     else if (input.hit(Button::Back)) {
         if (view.panel == Panel::ConfirmDelete) view.panel = Panel::Saves;
         else if (view.panel == Panel::ConfirmCreate) view.panel = Panel::NewVillage;
@@ -96,7 +96,7 @@ Request Interface::update(const InputState& input, const World& world, double el
     if (input.hit(Button::ZoomIn)) view.tile_size = std::min(48, view.tile_size + 4);
     if (std::abs(input.y) < .5) repeat = 0;
     if ((view.panel == Panel::Menu || view.panel == Panel::Speed || view.panel == Panel::Build || view.panel == Panel::NewVillage || view.panel == Panel::Saves) && std::abs(input.y) >= .5 && repeat <= 0) {
-        const int count = view.panel == Panel::Speed ? 3 : view.panel == Panel::Menu ? 7 : view.panel == Panel::NewVillage ? 6 : view.panel == Panel::Saves ? std::max(1, static_cast<int>(view.saves.size())) : 6;
+        const int count = view.panel == Panel::Speed ? 3 : view.panel == Panel::Menu ? 7 : view.panel == Panel::NewVillage ? 7 : view.panel == Panel::Saves ? std::max(1, static_cast<int>(view.saves.size())) : 6;
         view.menu_index = (view.menu_index + count + (input.y > 0 ? 1 : -1)) % count;
         repeat = .2;
     }
@@ -105,6 +105,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         const int direction = input.x > 0 ? 1 : -1;
         if (view.menu_index == 2) view.draft_biome = static_cast<Biome>((static_cast<int>(view.draft_biome) + biome_count + direction) % biome_count);
         if (view.menu_index == 3) view.draft_geography = static_cast<Geography>((static_cast<int>(view.draft_geography) + geography_count + direction) % geography_count);
+        if (view.menu_index == 4) view.draft_supplies = (view.draft_supplies + 3 + direction) % 3;
         page_repeat = .2;
     }
     if (view.panel == Panel::Inspector && std::abs(input.x) >= .5 && page_repeat <= 0) {
@@ -112,7 +113,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         page_repeat = .2;
     }
     if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.overview_page = (view.overview_page + 8 + (input.x > 0 ? 1 : -1)) % 8;
+        view.overview_page = (view.overview_page + 9 + (input.x > 0 ? 1 : -1)) % 9;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
@@ -148,7 +149,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         else if (view.panel == Panel::Tile && world.building_at(view.selected_tile) < 0) return Request::Designate;
         else if (view.panel == Panel::Build) return Request::Plan;
         else if (view.panel == Panel::Overview && view.overview_page < 2) return view.overview_page == 0 ? Request::ToggleDevelopment : Request::ToggleGrowth;
-        else if (view.panel == Panel::Overview && view.overview_page == 3) return Request::ToggleLearning;
+        else if (view.panel == Panel::Overview && (view.overview_page == 3 || view.overview_page == 8)) return Request::ToggleLearning;
         else if (view.panel == Panel::Overview && view.overview_page == 4) return Request::ExportHistory;
         else if (view.panel == Panel::Overview && view.overview_page == 5) return Request::Volume;
         else if (view.panel == Panel::NewVillage) {
@@ -156,8 +157,9 @@ Request Interface::update(const InputState& input, const World& world, double el
             else if (view.menu_index == 1) { std::ostringstream number; number << std::setw(10) << std::setfill('0') << view.draft_seed; view.edit_buffer = number.str(); view.edit_cursor = 0; view.renaming = false; view.panel = Panel::SeedEdit; }
             else if (view.menu_index == 2) view.draft_biome = static_cast<Biome>((static_cast<int>(view.draft_biome) + 1) % biome_count);
             else if (view.menu_index == 3) view.draft_geography = static_cast<Geography>((static_cast<int>(view.draft_geography) + 1) % geography_count);
-            else if (view.menu_index == 4) { if (view.has_world) view.panel = Panel::ConfirmCreate; else return Request::NewVillage; }
-            else if (view.menu_index == 5) { view.panel = Panel::Saves; view.menu_index = 0; return Request::OpenSaves; }
+            else if (view.menu_index == 4) view.draft_supplies = (view.draft_supplies + 1) % 3;
+            else if (view.menu_index == 5) { if (view.has_world) view.panel = Panel::ConfirmCreate; else return Request::NewVillage; }
+            else if (view.menu_index == 6) { view.panel = Panel::Saves; view.menu_index = 0; return Request::OpenSaves; }
         } else if (view.panel == Panel::ConfirmCreate) return Request::NewVillage;
         else if (view.panel == Panel::Saves && !view.saves.empty()) return Request::LoadSlot;
         else if (view.panel == Panel::Saves && view.saves.empty()) { view.panel = Panel::NewVillage; view.menu_index = 0; }

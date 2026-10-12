@@ -31,3 +31,11 @@ four wildlife types with inherited traits and learned preferences, finite nectar
 and pollination, hydrology/snowmelt, floods/fire, weathering/traffic and actual
 building maintenance. See [ecology](ecology.md) for rules and limitations.
 Handheld performance and long-term ecological balancing remain validation work.
+
+World creation now offers eight ecological biomes, twelve geographic layouts,
+three starting food budgets and a cached seeded map preview. Live neural and
+individual diagnostics report real inference, SGD, weight changes and outcomes,
+with explicit session/lifetime distinctions. Terrain/shoreline/sprite details,
+panel framing and a compact minimap improve readability. An original cover and
+native atomic Ports metadata registration are packaged without replacing other
+games. Physical validation of these new screens and theme integration remains.

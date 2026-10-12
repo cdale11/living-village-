@@ -24,4 +24,13 @@ if "$BINARY" --headless --seed 4294967296 --steps 1 > "$CHECK_DIR/overflow.log" 
     echo 'FAIL: overflowing CLI seed accepted' >&2
     exit 1
 fi
+"$BINARY" --new --seed 7 --biome taiga --layout canyon --starting-food 6 --ai-diagnostics --save-dir "$CHECK_DIR/new-options" --frames 12 > "$CHECK_DIR/options.log" 2>&1
+grep -Eq '^GENERATION 1 4 9 ' "$CHECK_DIR/new-options/worlds/world-000001.lvsave"
+"$BINARY" --benchmark-villagers 6 --ai-diagnostics --frames 12 > "$CHECK_DIR/live.log" 2>&1
+grep -Eq 'simulation_steps=[1-9][0-9]*' "$CHECK_DIR/live.log"
+mkdir -p "$CHECK_DIR/ports/images"
+cp assets/cover.png "$CHECK_DIR/ports/images/LivingVillage-image.png"
+printf '%s\n' '#!/bin/sh' > "$CHECK_DIR/ports/LivingVillage.sh"
+"$BINARY" --register-port-art "$CHECK_DIR/ports" > "$CHECK_DIR/art.log" 2>&1
+grep -q './images/LivingVillage-image.png' "$CHECK_DIR/ports/gamelist.xml"
 echo 'PASS: first boot waits for world settings; CLI generation preserves older worlds; active slot resumes; corrupt saves are not overwritten; seed overflow rejected'

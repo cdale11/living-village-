@@ -16,8 +16,10 @@ const char* World::weather_name() const {
 }
 void World::update_weather() {
     const double seasonal[] = {16, 27, 13, 3};
-    temperature = seasonal[season()] + (biome == Biome::Arid ? 9 : 0) + eco_random(9) - 4;
-    const int rain_chance = biome == Biome::Arid ? 14 : biome == Biome::Woodland ? 42 : 30;
+    const double warmth[] = {0, 0, 0, 9, -9, 7, 2, 6};
+    const int rainfall[] = {30, 42, 30, 14, 26, 65, 55, 22};
+    temperature = seasonal[season()] + warmth[static_cast<int>(biome)] + eco_random(9) - 4;
+    const int rain_chance = rainfall[static_cast<int>(biome)];
     const int roll = eco_random(100);
     weather = roll < rain_chance ? (temperature <= 2 ? Weather::Snow : roll < 5 ? Weather::Storm : Weather::Rain)
         : temperature >= 30 && roll > 85 ? Weather::Heatwave : Weather::Clear;
@@ -37,7 +39,10 @@ void World::initialize_ecology(bool wildlife) {
         // Basin slope plus two broad hills; no elevation changes alter passability.
         t.elevation = water ? .05 : .3 + .15 * std::sin((x + seed % 17) / 12.0) * std::cos(y / 15.0)
             + (geography == Geography::Highlands ? std::abs(x - 32 - (y - 32) * .55) / 150.0 : 0);
-        t.moisture = water ? 1 : biome == Biome::Arid ? .32 : .6;
+        const double moisture[] = {.6, .6, .6, .32, .5, .78, .88, .42};
+        t.moisture = water ? 1 : moisture[static_cast<int>(biome)];
+        if (geography == Geography::Canyon) t.elevation += std::min(.45, std::abs(x - 15) / 80.0);
+        if (geography == Geography::Valley) t.elevation += std::abs(x - 32) / 100.0;
         t.surface_water = water ? .7 : 0; t.groundwater = water ? .8 : .35;
         t.fertility = biome == Biome::Arid ? .45 : .75;
         t.organic = biome == Biome::Woodland ? .65 : .45;

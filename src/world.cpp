@@ -88,10 +88,10 @@ void World::decide(Villager& p) {
         p.goal = Goal::Play; p.reason = "Playing safely at home";
         double base = 25 + p.curiosity * 15;
         auto input = observations(p, p.goal, here, base);
-        double adjustment = 18 * p.brain.predict(input), score = base + adjustment;
+        double adjustment = 18 * p.brain.evaluate(input), score = base + adjustment;
         auto child_choice = [&](Goal goal, double utility, const char* why) {
             const auto candidate = observations(p, goal, here, utility);
-            const double modifier = 18 * p.brain.predict(candidate);
+            const double modifier = 18 * p.brain.evaluate(candidate);
             if (utility + modifier > score) { p.goal = goal; p.reason = why; base = utility; input = candidate; adjustment = modifier; score = utility + modifier; }
         };
         if (p.food > 0 && p.hunger >= 30) child_choice(Goal::Eat, p.hunger * 1.5, "Eating a supplied meal");
@@ -108,7 +108,7 @@ void World::decide(Villager& p) {
     double chosen_exploration = experiment == static_cast<int>(chosen) ? 8 : 0;
     double chosen_base = 25 + p.curiosity * 15;
     BrainInput chosen_input = observations(p, chosen, here, chosen_base);
-    double chosen_adjustment = 18 * p.brain.predict(chosen_input);
+    double chosen_adjustment = 18 * p.brain.evaluate(chosen_input);
     double highest = chosen_base + chosen_adjustment + chosen_exploration;
     std::string reason = "Curiosity " + std::to_string(static_cast<int>(p.curiosity * 100)) + "; finding resources";
     auto consider = [&](Goal goal, double utility, Point place, const std::string& why, int id = -1) {
@@ -116,7 +116,7 @@ void World::decide(Villager& p) {
         utility += work_bias(p, goal);
         const double exploratory = experiment == static_cast<int>(goal) ? 8 : 0;
         const auto input = observations(p, goal, place, utility);
-        const double adjustment = 18 * p.brain.predict(input);
+        const double adjustment = 18 * p.brain.evaluate(input);
         if (utility + adjustment + exploratory <= highest) return;
         auto path = route(here, place);
         if (!(here == place) && path.empty()) return;

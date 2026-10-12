@@ -59,3 +59,11 @@ stable IDs, active markers, rename/snapshot and confirmed inactive deletion.
 Controller world/seed/name editors live in `ui.cpp`; they do not alter a running
 world until creation/loading succeeds. Autosaving never writes an unconfirmed
 first-run preview or a corrupt startup placeholder.
+
+`port_art.cpp` handles frontend XML registration before SDL initialization. It
+uses bounded structural scanning and verbatim edits of only our entry, backed-up
+atomic metadata writes and a registration lock. Brain `evaluate()` tracks real
+decision inference separately from side-effect-free inspector `predict()`;
+training records actual weight delta. These diagnostic session fields do not
+affect decisions, world RNG or serialized simulation state. Two overview pages
+keep simulation active to permit live monitoring.

@@ -18,7 +18,9 @@ In the villager inspector, left/right cycles six pages: needs/reason, skills
 and personality, relationships and recent experiences, household and family, personal neural learning, replay and practiced work. Y opens the overview,
 where left/right selects village, population history, neural learning, economy/history exports, or sound/vibration. A on village toggles
 autonomous new planning; A on population toggles births and arrivals;
-A on neural learning freezes/resumes model training. L1/R1 changes the inspected villager.
+A on neural learning or agent diagnostics freezes/resumes model training. Those
+two pages run live; Start pauses. The ninth overview page shows individual
+prediction/training/weight-change telemetry. L1/R1 changes the inspected villager.
 
 ## Fn+Start exit
 
