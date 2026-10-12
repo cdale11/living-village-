@@ -347,7 +347,7 @@ void Renderer::draw(const World& world, const View& view) {
     text(12, 455, view.status, cream, 2, 690);
     if (view.ecology_overlay > 0 && view.panel == Panel::Map) {
         const char* legends[] = {"", "SOIL WATER: RED DRY / BLUE WET", "VEGETATION: RED LOW / GREEN HIGH", "TRAFFIC: RED LOW / GREEN COMPACTED"};
-        rect(12, 74, 402, 22, ink); text(20, 80, legends[view.ecology_overlay], cream, 1);
+        rect(12, 96, 402, 22, ink); text(20, 102, legends[view.ecology_overlay], cream, 1);
     }
     if (view.panel != Panel::Map) {
         rect(0, 54, 720, 372, {8, 19, 21, 155});
