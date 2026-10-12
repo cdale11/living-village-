@@ -30,7 +30,9 @@ cooperation. Examples:
 Hunger 75+ adds 55 to food acquisition/eating scores. At hunger 85+, an agent
 carrying a meal can interrupt a long trip to eat. The inspector shows the
 actual winning score and reason; its detail pages show skills, personality,
-relationships and recent experiences. Scores are not fixed daily schedules.
+relationships and recent experiences. Scores are not fixed daily schedules. A personal online-trained MLP adds a
+bounded learned adjustment to each valid candidate, using actual outcomes. See
+[neural learning](neural-learning.md) for architecture and reward rules.
 
 Unfinished building plans expose actual wood/stone deficits to all villagers.
 Agents choose to collect known resources, withdraw available materials at camp,
@@ -117,15 +119,16 @@ Relationships are bounded and each villager keeps six significant experiences.
 
 ## Persistence and bounds
 
-Version 3 saves record all resources, buildings, invested materials, progress,
+Version 4 saves record all resources, buildings, invested materials, progress,
 contributors, crops, fuel, gathering areas, skills, relationships, experiences,
 goals/targets, paths, memories, settings and PRNG state. Version 1 saves upgrade
 on load, preserving old villagers/time/inventories/terrain/goals/PRNG and adding
 new resource quantities to existing trees/stone, plus the camp structures.
 Version 2 saves preserve village development state and acquire stable identity
-and household metadata. Version 3 also records family state, growth settings,
+and household metadata. Version 3 introduced family state, growth settings,
 birth/arrival/death counters and recoverable supplies left at death locations.
-The existing checksum, atomic rename/flush and validated backup remain.
+Version 4 adds neural weights and in-flight learning experience; version 3
+worlds upgrade with fresh per-resident models. The existing checksum, atomic rename/flush and validated backup remain.
 
 Memories cap at 48 locations per resource per villager; shared events at 24;
 buildings at 64; gathering areas at 16; population at 20 living plus 32 archived deceased.

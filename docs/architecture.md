@@ -5,8 +5,9 @@
 movement, needs, relationships and ecology. `buildings.cpp` contains building
 recipes, capacity/effect queries, placement validation and shared need-driven
 planning. `population.cpp` handles homes, households, births, arrivals, ageing
-and deaths. `saves.cpp` records full state and migrates version 1/2 saves to
-version 3. Headless runs and tests use the same simulation as the graphical game.
+and deaths. `brain.cpp` implements the per-resident MLP and bounded SGD;
+`learning.cpp` extracts observations and credits action outcomes. `saves.cpp`
+records full state and migrates version 1/2/3 saves to version 4. Headless runs and tests use the same simulation as the graphical game.
 
 `main.cpp` feeds fixed 0.1-second steps. Rendering targets 30 FPS. Speed 4×
 advances four times as many steps. Stalls are bounded to 0.2 seconds and at most
@@ -15,9 +16,10 @@ simulation. Simulation speed and autonomous planning preference are saved.
 
 `input.cpp` reads mapped SDL controllers, raw joysticks and keyboard state,
 including Fn+Start exit. `ui.cpp` controls camera, menu and inspection pages and
-returns save/load/exit/plan/designation requests. Building requests alter
+returns save/load/exit/plan/designation and learning-toggle requests. Building requests alter
 simulation state in `main.cpp`; UI does not bypass material or work costs.
-Directional menus repeat at a bounded rate, while action buttons use edges.
+Neural models persist weights and one pending experience each, with no growing
+training dataset. Directional menus repeat at a bounded rate, while action buttons use edges.
 
 `render.cpp` draws visible terrain, original sprites, buildings, construction
 progress, designation borders, bitmap lettering and panels at logical 720×480.
@@ -35,5 +37,4 @@ construction contributor histories at 64. The default population begins at six;
 3,500-day regression tests cover generational turnover.
 
 Platform paths/optional SDL overrides stay in the Ports launcher. All handheld
-writes stay on /userdata; no OS package installs occur. ROCKNIX still needs a
-validated platform adapter. There is no game networking.
+writes stay on /userdata; no OS package installs occur. There is no game networking.

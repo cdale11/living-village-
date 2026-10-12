@@ -27,7 +27,7 @@ int main() {
         world.person(0)->relationships[1] = world.person(1)->relationships[0] = 80;
         if (!world.form_household(0, 1) || !world.have_child(0, 1)) throw std::runtime_error("Family render fixture failed");
         view.selected_tile = {34, 32};
-        for (int n = 0; n < 40; ++n) world.update();
+        for (int n = 0; n < 1000; ++n) world.update();
         std::vector<Uint8> pixels(720 * 480 * 4);
         for (Panel panel : {Panel::Map, Panel::Menu, Panel::Inspector, Panel::Overview, Panel::Speed, Panel::Controls, Panel::Tile, Panel::Build, Panel::NewVillage}) {
             view.panel = panel;
@@ -39,11 +39,12 @@ int main() {
             if (!variation) throw std::runtime_error("Blank render");
             if (panel == Panel::Map) graphics.screenshot("build/map-preview.ppm");
             if (panel == Panel::Build) graphics.screenshot("build/build-preview.ppm");
-            if (panel == Panel::Inspector) for (int page = 1; page < 4; ++page) {
+            if (panel == Panel::Inspector) for (int page = 1; page < 5; ++page) {
                 view.inspector_page = page; graphics.draw(world, view);
                 if (page == 3) graphics.screenshot("build/family-preview.ppm");
+                if (page == 4) graphics.screenshot("build/learning-preview.ppm");
             }
-            if (panel == Panel::Overview) for (int page = 1; page < 3; ++page) {
+            if (panel == Panel::Overview) for (int page = 1; page < 4; ++page) {
                 view.overview_page = page; graphics.draw(world, view);
                 if (page == 1) graphics.screenshot("build/population-preview.ppm");
             }

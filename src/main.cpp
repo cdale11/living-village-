@@ -60,8 +60,9 @@ int main(int argc, char** argv) {
             struct rusage usage{}; getrusage(RUSAGE_SELF, &usage);
             int survivors = 0; for (const auto& p : world.villagers) if (p.alive()) ++survivors;
             int built = 0; for (const auto& b : world.buildings) if (b.complete) ++built;
+            std::uint64_t training_updates = 0; for (const auto& p : world.villagers) training_updates += p.brain.updates;
             std::cout << "Headless: " << config.steps << " steps, day " << world.day() << ", " << survivors
-                      << " alive (" << world.child_count() << " children), " << world.births << " births, " << world.arrivals << " arrivals, " << world.deaths << " deaths, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, peak RSS " << usage.ru_maxrss << " KiB\n";
+                      << " alive (" << world.child_count() << " children), " << world.births << " births, " << world.arrivals << " arrivals, " << world.deaths << " deaths, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, " << training_updates << " retained learning updates, peak RSS " << usage.ru_maxrss << " KiB\n";
             return 0;
         }
         const auto save_path = std::filesystem::path(config.save_dir) / "village.lvsave";
@@ -135,6 +136,9 @@ int main(int argc, char** argv) {
             } else if (request == Request::ToggleGrowth) {
                 world.population_growth = !world.population_growth;
                 ui.view.status = world.population_growth ? "New births and arrivals enabled" : "New births and arrivals paused";
+            } else if (request == Request::ToggleLearning) {
+                world.learning_enabled = !world.learning_enabled;
+                ui.view.status = world.learning_enabled ? "Online neural learning enabled" : "Learning paused - learned decisions retained";
             } else if (request == Request::NewVillage) {
                 try {
                     if (!config.no_save) save_atomic(world, std::filesystem::path(config.save_dir) / "previous-village.lvsave");

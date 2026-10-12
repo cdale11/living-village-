@@ -39,11 +39,11 @@ Request Interface::update(const InputState& input, const World& world, double el
     page_repeat -= elapsed;
     if (std::abs(input.x) < .5) page_repeat = 0;
     if (view.panel == Panel::Inspector && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.inspector_page = (view.inspector_page + 4 + (input.x > 0 ? 1 : -1)) % 4;
+        view.inspector_page = (view.inspector_page + 5 + (input.x > 0 ? 1 : -1)) % 5;
         page_repeat = .2;
     }
     if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.overview_page = (view.overview_page + 3 + (input.x > 0 ? 1 : -1)) % 3;
+        view.overview_page = (view.overview_page + 4 + (input.x > 0 ? 1 : -1)) % 4;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
@@ -77,6 +77,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         else if (view.panel == Panel::Tile && world.building_at(view.selected_tile) < 0) return Request::Designate;
         else if (view.panel == Panel::Build) return Request::Plan;
         else if (view.panel == Panel::Overview && view.overview_page < 2) return view.overview_page == 0 ? Request::ToggleDevelopment : Request::ToggleGrowth;
+        else if (view.panel == Panel::Overview && view.overview_page == 3) return Request::ToggleLearning;
         else if (view.panel == Panel::NewVillage) return Request::NewVillage;
     }
     return Request::None;

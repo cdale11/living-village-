@@ -108,7 +108,7 @@ bool World::have_child(int first, int second) {
     const auto& house = buildings[a->home];
     if (!house.complete || house.kind != BuildingKind::Shelter) return false;
     Villager baby;
-    baby.id = next_person_id++; baby.name = new_name(baby.id); baby.age = 0; baby.hunger = 0; baby.home = house.id;
+    baby.id = next_person_id++; baby.brain.initialize(seed, baby.id); baby.name = new_name(baby.id); baby.age = 0; baby.hunger = 0; baby.home = house.id;
     baby.x = house.position.x; baby.y = house.position.y; baby.destination = house.position;
     baby.parents = {first, second}; baby.parent_names = {a->name, b->name};
     auto inherit = [&](double av, double bv) { return std::clamp((av + bv) / 2 + (random(21) - 10) / 100.0, .2, .95); };
@@ -156,12 +156,13 @@ bool World::welcome_migrant() {
     }
     if (home < 0) return false;
     Villager newcomer;
-    newcomer.id = next_person_id++; newcomer.name = new_name(newcomer.id); newcomer.age = 18 + random(18);
+    newcomer.id = next_person_id++; newcomer.brain.initialize(seed, newcomer.id); newcomer.name = new_name(newcomer.id); newcomer.age = 18 + random(18);
     newcomer.home = home; newcomer.x = entry.x; newcomer.y = entry.y; newcomer.path = path; newcomer.destination = camp;
     newcomer.goal = Goal::Arrive; newcomer.reason = "Village has spare shelter and food"; newcomer.hunger = 10; newcomer.energy = 75;
     newcomer.curiosity = .3 + random(60) / 100.0; newcomer.cooperation = .35 + random(60) / 100.0; newcomer.family_drive = .35 + random(60) / 100.0;
     newcomer.gather_skill = random(16) / 100.0; newcomer.build_skill = random(11) / 100.0;
     remember(newcomer, "Joined a village with spare shelter");
+    begin_learning(newcomer, observations(newcomer, Goal::Arrive, camp, 0), 0, 0);
     villagers.push_back(newcomer); ++arrivals; next_migration_day = day() + 12;
     event(newcomer.name + " arrives seeking a home"); prune_history(); return true;
 }
@@ -169,7 +170,8 @@ bool World::kill(int id, const std::string& reason) {
     auto* p = person(id); if (!p || p->death_day != 0) return false;
     const Point at{static_cast<int>(std::round(p->x)), static_cast<int>(std::round(p->y))};
     auto& ground = tile(at.x, at.y); ground.loose_food += p->food; ground.loose_wood += p->wood; ground.loose_stone += p->stone;
-    p->food = p->wood = p->stone = 0; p->health = 0; p->death_day = day(); p->death_reason = reason; p->path.clear();
+    p->health = 0; learn(*p, -1);
+    p->food = p->wood = p->stone = 0; p->death_day = day(); p->death_reason = reason; p->path.clear();
     ++deaths; remember(*p, "Died: " + reason); event(p->name + " died: " + reason);
     const std::string name = p->name;
     for (auto& other : villagers) if (other.alive()) {

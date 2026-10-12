@@ -2,7 +2,7 @@
 #include "input.hpp"
 #include "render.hpp"
 namespace village {
-enum class Request { None, Save, Load, Exit, Plan, ToggleDevelopment, Designate, ToggleGrowth, NewVillage, PreviousVillage };
+enum class Request { None, Save, Load, Exit, Plan, ToggleDevelopment, Designate, ToggleGrowth, NewVillage, PreviousVillage, ToggleLearning };
 class Interface {
 public:
     View view;

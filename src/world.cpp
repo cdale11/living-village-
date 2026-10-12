@@ -37,7 +37,7 @@ World::World(std::uint32_t initial_seed) : seed(initial_seed), rng(seed) {
     const char* names[] = {"Mira", "Arin", "Tala", "Bram", "Neri", "Oren"};
     for (int i = 0; i < 6; ++i) {
         Villager p;
-        p.id = i; p.name = names[i]; p.x = 31 + i % 3; p.y = 30 + i / 3;
+        p.id = i; p.brain.initialize(seed, i); p.name = names[i]; p.x = 31 + i % 3; p.y = 30 + i / 3;
         p.age = 19 + random(24); p.curiosity = 0.3 + random(60) / 100.0;
         p.cooperation = .35 + random(60) / 100.0; p.family_drive = .35 + random(60) / 100.0;
         p.decision_timer = i * .3; p.destination = position(p);
@@ -85,25 +85,44 @@ void World::discover(Villager& person) {
         }
 }
 void World::decide(Villager& p) {
+    const auto known = p.known_food.size() + p.known_wood.size() + p.known_stone.size();
     discover(p);
+    if (p.brain.active) p.brain.progress = std::min(20.0, p.brain.progress + .03 * (p.known_food.size() + p.known_wood.size() + p.known_stone.size() - known));
+    learn(p);
     const Point here = position(p);
     if (p.age < 6) {
         p.path.clear(); p.destination = here; p.target_id = -1; p.action_timer = 0; p.decision_timer = 5;
-        if (p.food > 0 && p.hunger >= 30) { p.goal = Goal::Eat; p.reason = "Eating a supplied meal"; p.decision_score = p.hunger * 1.5; }
-        else if (p.energy < 75) { p.goal = Goal::Rest; p.target_id = p.home; p.reason = "Young child resting at home"; p.decision_score = (100 - p.energy) * 1.6; }
-        else if (p.hunger >= 25) { p.goal = Goal::WaitForCare; p.reason = "Too young to forage; needs a caregiver"; p.decision_score = p.hunger * 1.5; }
-        else { p.goal = Goal::Play; p.reason = "Playing safely at home"; p.decision_score = 25 + p.curiosity * 15; }
+        p.goal = Goal::Play; p.reason = "Playing safely at home";
+        double base = 25 + p.curiosity * 15;
+        auto input = observations(p, p.goal, here, base);
+        double adjustment = 18 * p.brain.predict(input), score = base + adjustment;
+        auto child_choice = [&](Goal goal, double utility, const char* why) {
+            const auto candidate = observations(p, goal, here, utility);
+            const double modifier = 18 * p.brain.predict(candidate);
+            if (utility + modifier > score) { p.goal = goal; p.reason = why; base = utility; input = candidate; adjustment = modifier; score = utility + modifier; }
+        };
+        if (p.food > 0 && p.hunger >= 30) child_choice(Goal::Eat, p.hunger * 1.5, "Eating a supplied meal");
+        if (p.energy < 75) child_choice(Goal::Rest, (100 - p.energy) * 1.6, "Young child resting at home");
+        if (p.hunger >= 25 && p.food == 0) child_choice(Goal::WaitForCare, p.hunger * 1.5, "Too young to forage; needs a caregiver");
+        if (p.goal == Goal::Rest) p.target_id = p.home;
+        begin_learning(p, input, base, adjustment); p.decision_score = std::max(0.0, score);
         return;
     }
     Goal chosen = Goal::Explore;
     Point destination = here; int target = -1;
-    double highest = 25 + p.curiosity * 15;
+    double chosen_base = 25 + p.curiosity * 15;
+    BrainInput chosen_input = observations(p, chosen, here, chosen_base);
+    double chosen_adjustment = 18 * p.brain.predict(chosen_input);
+    double highest = chosen_base + chosen_adjustment;
     std::string reason = "Curiosity " + std::to_string(static_cast<int>(p.curiosity * 100)) + "; finding resources";
     auto consider = [&](Goal goal, double utility, Point place, const std::string& why, int id = -1) {
-        if (utility <= highest || !passable(place.x, place.y)) return;
+        if (!passable(place.x, place.y)) return;
+        const auto input = observations(p, goal, place, utility);
+        const double adjustment = 18 * p.brain.predict(input);
+        if (utility + adjustment <= highest) return;
         auto path = route(here, place);
         if (!(here == place) && path.empty()) return;
-        highest = utility; chosen = goal; destination = place; target = id; reason = why;
+        highest = utility + adjustment; chosen_base = utility; chosen_adjustment = adjustment; chosen_input = input; chosen = goal; destination = place; target = id; reason = why;
     };
     auto resource = [&](const std::vector<Point>& memory, int kind) {
         std::vector<Point> available;
@@ -199,8 +218,9 @@ void World::decide(Villager& p) {
             if (!route(here, candidate).empty()) { destination = candidate; break; }
         }
     }
-    p.goal = chosen; p.target_id = target; p.destination = destination; p.reason = reason; p.decision_score = highest;
-    p.path = route(here, destination); p.action_timer = 0; p.decision_timer = 5 + p.id * .07;
+    p.goal = chosen; p.target_id = target; p.destination = destination; p.reason = reason; p.decision_score = std::max(0.0, highest);
+    begin_learning(p, chosen_input, chosen_base, chosen_adjustment);
+    p.path = route(here, destination); p.action_timer = 0; p.decision_timer = 5 + (p.id % population_limit) * .07;
     if (target >= 0 && (chosen == Goal::Build || chosen == Goal::GatherWood || chosen == Goal::CollectStone || chosen == Goal::TakeMaterials || chosen == Goal::DeliverMaterials) && !buildings[target].complete && buildings[target].initiator < 0)
         { buildings[target].initiator = p.id; buildings[target].initiator_name = p.name; }
 }
@@ -221,6 +241,7 @@ void World::execute(Villager& p, double dt) {
     }
     p.action_timer += dt;
     const Point here = position(p);
+    auto reward = [&](double amount) { if (p.brain.active) p.brain.progress = std::clamp(p.brain.progress + amount, -20.0, 20.0); };
     auto finish = [&]() { p.decision_timer = 0; p.action_timer = 0; };
     const bool person_target = p.goal == Goal::Socialize || p.goal == Goal::Care || p.goal == Goal::CollectMeal;
     auto* site = p.target_id >= 0 && p.target_id < static_cast<int>(buildings.size()) && !person_target ? &buildings[p.target_id] : nullptr;
@@ -243,39 +264,39 @@ void World::execute(Villager& p, double dt) {
         int* available = *loose > 0 ? loose : natural;
         int* inventory = p.goal == Goal::Forage ? &p.food : p.goal == Goal::GatherWood ? &p.wood : &p.stone;
         bool space = p.goal == Goal::Forage ? p.food < 4 : p.wood + p.stone < 6;
-        if (*available > 0 && space) { --*available; ++*inventory; p.gather_skill = std::min(1.0, p.gather_skill + .005); }
+        if (*available > 0 && space) { --*available; ++*inventory; reward(p.goal == Goal::Forage ? .12 : .10); p.gather_skill = std::min(1.0, p.gather_skill + .005); }
         p.action_timer = 0;
         if (*available == 0 || (p.goal == Goal::Forage ? p.food >= 4 : p.wood + p.stone >= 6)) finish();
     } else if (p.goal == Goal::TendFarm && p.action_timer >= 3 / (1 + p.farm_skill)) {
         if (site && site->complete && here == site->position) {
             int amount = std::min(4 - p.food, site->food);
             site->food -= amount; p.food += amount;
-            if (amount > 0) { p.farm_skill = std::min(1.0, p.farm_skill + .01); remember(p, "Harvested " + std::to_string(amount) + " farm food"); }
+            if (amount > 0) { reward(.12 * amount); p.farm_skill = std::min(1.0, p.farm_skill + .01); remember(p, "Harvested " + std::to_string(amount) + " farm food"); }
         }
         finish();
     } else if (p.goal == Goal::DeliverFood && here == camp && p.action_timer >= 1) {
         int amount = std::min(std::max(0, p.food - 1), food_capacity() - food_stock);
-        if (amount > 0) { food_stock += amount; p.food -= amount; remember(p, "Shared " + std::to_string(amount) + " food at camp"); }
+        if (amount > 0) { food_stock += amount; p.food -= amount; reward(.12 * amount * p.cooperation); remember(p, "Shared " + std::to_string(amount) + " food at camp"); }
         finish();
     } else if (p.goal == Goal::StoreMaterials && here == camp && p.action_timer >= 1) {
         int wood = std::min(p.wood, std::max(0, material_capacity() - wood_stock));
         int stone = std::min(p.stone, std::max(0, material_capacity() - stone_stock));
         wood_stock += wood; stone_stock += stone; p.wood -= wood; p.stone -= stone;
-        if (wood + stone > 0) remember(p, "Stored spare materials at camp");
+        if (wood + stone > 0) { reward(.08 * (wood + stone) * p.cooperation); remember(p, "Stored spare materials at camp"); }
         finish();
     } else if (p.goal == Goal::TakeMaterials && here == camp && p.action_timer >= 1) {
         if (site && site->complete && site->kind == BuildingKind::Campfire) {
-            int amount = std::min({1, wood_stock, 6 - p.wood - p.stone}); wood_stock -= amount; p.wood += amount;
+            int amount = std::min({1, wood_stock, 6 - p.wood - p.stone}); wood_stock -= amount; p.wood += amount; reward(.06 * amount);
         } else if (site && !site->complete) {
             int wood = std::min({std::max(0, site->wood_needed() - p.wood), wood_stock, 6 - p.wood - p.stone});
             wood_stock -= wood; p.wood += wood;
             int stone = std::min({std::max(0, site->stone_needed() - p.stone), stone_stock, 6 - p.wood - p.stone});
-            stone_stock -= stone; p.stone += stone;
+            stone_stock -= stone; p.stone += stone; reward(.06 * (wood + stone));
         }
         finish();
     } else if (p.goal == Goal::RefuelFire && p.action_timer >= 1) {
         if (site && site->complete && site->kind == BuildingKind::Campfire && here == site->position && site->fuel <= 30 && p.wood > 0) {
-            --p.wood; site->fuel += 240; remember(p, "Carried wood to refuel campfire");
+            --p.wood; site->fuel += 240; reward(.3 * p.cooperation); remember(p, "Carried wood to refuel campfire");
         }
         finish();
     } else if (p.goal == Goal::DeliverMaterials && p.action_timer >= 1) {
@@ -283,6 +304,7 @@ void World::execute(Villager& p, double dt) {
             int wood = std::min(p.wood, site->wood_needed()), stone = std::min(p.stone, site->stone_needed());
             site->wood_delivered += wood; site->stone_delivered += stone; p.wood -= wood; p.stone -= stone;
             if (wood + stone > 0) {
+                reward(.16 * (wood + stone) * p.cooperation);
                 site->contribute(p.id);
                 remember(p, std::string("Supplied ") + building_name(site->kind));
                 if (site->initiator >= 0 && site->initiator != p.id) {
@@ -297,20 +319,23 @@ void World::execute(Villager& p, double dt) {
         finish();
     } else if (p.goal == Goal::Build) {
         if (!site || site->complete || !site->supplied() || !(here == site->position)) { finish(); return; }
+        reward(dt * .04 * p.cooperation);
         site->work += dt * (.75 + p.build_skill); p.build_skill = std::min(1.0, p.build_skill + dt * .0005);
         site->contribute(p.id);
         if (site->work >= building_cost(site->kind).work) {
             site->work = building_cost(site->kind).work; site->complete = true;
             if (site->kind == BuildingKind::Campfire) site->fuel = 240;
+            reward(.35);
             event(std::string("Completed: ") + building_name(site->kind));
             remember(p, std::string("Finished ") + building_name(site->kind)); finish();
         }
     } else if (p.goal == Goal::CollectMeal && here == camp && p.action_timer >= 1) {
         const auto* child = person(p.target_id);
-        if (child && child->alive() && child->child() && child->hunger >= 40 && food_stock > 0 && p.food < 4) { --food_stock; ++p.food; }
+        if (child && child->alive() && child->child() && child->hunger >= 40 && food_stock > 0 && p.food < 4) { --food_stock; ++p.food; reward(.08); }
         finish();
     } else if (p.goal == Goal::Care && p.action_timer >= 1) {
         if (auto* child = person(p.target_id)) if (child->alive() && child->child() && child->hunger >= 40 && p.food > 0 && distance(here, position(*child)) <= 1) {
+            reward(.5 * (.5 + p.cooperation));
             --p.food; child->hunger = std::max(0.0, child->hunger - 45); child->loneliness = std::max(0.0, child->loneliness - 20);
             child->relationships[p.id] = std::min(100.0, child->relationships[p.id] + 2);
             remember(p, "Brought a meal to " + child->name); remember(*child, p.name + " brought me food");
@@ -361,6 +386,7 @@ void World::update(double dt) {
     for (auto& p : villagers) {
         next_person_id = std::max(next_person_id, p.id + 1);
         if (!p.alive()) { if (p.death_day == 0) kill(p.id, "Hunger"); continue; }
+        if (p.brain.active) p.brain.elapsed = std::min(100000.0, p.brain.elapsed + dt);
         p.hunger = std::min(100.0, p.hunger + dt * (p.age < 6 ? .06 : p.child() ? .09 : .12)); p.energy = std::max(0.0, p.energy - dt * (p.child() ? .025 : .065));
         p.loneliness = std::min(100.0, p.loneliness + dt * .045);
         if (p.hunger >= 99) p.health = std::max(0.0, p.health - dt * .25);

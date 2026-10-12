@@ -3,11 +3,16 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 
 namespace village {
 namespace {
 constexpr SDL_Color ink{25, 38, 39, 255}, cream{244, 235, 205, 255}, muted{162, 187, 167, 255};
+std::string decimal(double value) {
+    std::ostringstream out; out << std::fixed << std::setprecision(2) << value; return out.str();
+}
 // Original 5x7 bitmap lettering, no font or texture dependency.
 const char* glyph(char c) {
     switch (c) {
@@ -282,23 +287,47 @@ void Renderer::draw(const World& world, const View& view) {
                     text(102, 318, "Family drive: " + std::to_string(static_cast<int>(p.family_drive * 100)), muted);
                     text(102, 342, p.alive() ? "Birthday in " + std::to_string(days_per_year - p.age_days) + " days" : "Remembered since day " + std::to_string(p.death_day), muted);
                 }
+                if (view.inspector_page == 4) {
+                    const auto& brain = p.brain;
+                    text(102, 122, "PERSONAL MLP - ONLINE LEARNING", muted);
+                    text(102, 154, "Updates " + std::to_string(brain.updates) + " | " + (world.learning_enabled ? "Training on" : "Training paused"), cream);
+                    text(102, 182, "Base " + decimal(brain.selected_base) + " | Learned " + decimal(brain.selected_adjustment), cream);
+                    text(102, 210, "Last reward " + decimal(brain.last_reward) + " | Error " + decimal(brain.last_error), muted);
+                    text(102, 240, "Learned context effects:", cream);
+                    const char* labels[] = {"Hunger", "Energy", "Health", "Loneliness", "Cooperation", "Curiosity", "Family drive", "Gather skill", "Build skill", "Farm skill", "Carried food", "Materials", "Shared food", "Wood demand", "Stone demand", "Spare beds", "Trip distance", "Base utility"};
+                    std::array<std::pair<double, int>, brain_context> effects{};
+                    const double prediction = brain.predict(brain.pending);
+                    for (int i = 0; i < brain_context; ++i) {
+                        auto ablated = brain.pending; ablated[brain_actions + i] = 0;
+                        effects[i] = {18 * (prediction - brain.predict(ablated)), i};
+                    }
+                    std::stable_sort(effects.begin(), effects.end(), [](const auto& a, const auto& b) { return std::abs(a.first) > std::abs(b.first); });
+                    for (int i = 0; i < 3; ++i) text(102, 268 + i * 26, std::string(labels[effects[i].second]) + ": " + decimal(effects[i].first), muted);
+                }
                 text(102, 366, "LEFT/RIGHT DETAILS   L1/R1 PEOPLE", muted);
                 break;
             }
             case Panel::Overview: {
-                text(102, 80, view.overview_page == 0 ? "VILLAGE LIFE" : view.overview_page == 1 ? "POPULATION" : "VILLAGE HISTORY", cream, 3);
+                text(102, 80, view.overview_page == 0 ? "VILLAGE LIFE" : view.overview_page == 1 ? "POPULATION" : view.overview_page == 2 ? "VILLAGE HISTORY" : "NEURAL LEARNING", cream, 3);
                 if (view.overview_page == 0) {
                     int finished = 0; for (const auto& b : world.buildings) if (b.complete) ++finished;
                     text(102, 126, "Built " + std::to_string(finished) + " | Plans " + std::to_string(world.buildings.size() - finished), muted);
                     text(102, 164, "Residents " + std::to_string(world.alive_count()) + " | Beds " + std::to_string(world.shelter_capacity()), cream);
                     text(102, 208, "A: AUTO PLANS " + std::string(world.auto_develop ? "ON" : "OFF"), cream);
-                    text(102, 256, "Left/right: population and event log", muted, 2, 504);
+                    text(102, 256, "Left/right: population, log and learning", muted, 2, 504);
                 } else if (view.overview_page == 1) {
                     text(102, 126, "Adults " + std::to_string(world.alive_count() - world.child_count()) + " | Children " + std::to_string(world.child_count()), cream);
                     text(102, 164, "Births " + std::to_string(world.births) + " | Arrivals " + std::to_string(world.arrivals), cream);
                     text(102, 202, "Deaths " + std::to_string(world.deaths) + " | Year " + std::to_string(1 + (world.day() - 1) / days_per_year), muted);
                     text(102, 248, "A: NEW BIRTHS/ARRIVALS " + std::string(world.population_growth ? "ON" : "OFF"), cream);
                     text(102, 294, world.growth_status(), muted, 2, 504);
+                } else if (view.overview_page == 3) {
+                    std::uint64_t total = 0; for (const auto& p : world.villagers) total += p.brain.updates;
+                    text(102, 126, "Each villager has a personal MLP", cream);
+                    text(102, 160, "37 inputs / 12 hidden / 1 value", muted);
+                    text(102, 194, "Retained updates: " + std::to_string(total), cream);
+                    text(102, 238, "A: ONLINE LEARNING " + std::string(world.learning_enabled ? "ON" : "PAUSED"), cream);
+                    text(102, 284, "Learns from needs, useful work and travel cost. X details show actual model effects.", muted, 2, 504);
                 } else {
                     for (std::size_t i = world.events.size() > 4 ? world.events.size() - 4 : 0, line = 0; i < world.events.size(); ++i, ++line)
                         text(102, 126 + static_cast<int>(line) * 54, world.events[i], cream, 2, 504);

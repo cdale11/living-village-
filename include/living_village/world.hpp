@@ -1,4 +1,5 @@
 #pragma once
+#include "brain.hpp"
 #include <array>
 #include <cstdint>
 #include <deque>
@@ -41,6 +42,7 @@ struct Relationships {
     double& operator[](int id);
 };
 struct Villager {
+    Brain brain;
     int id = 0;
     std::string name;
     double x = 32, y = 32;
@@ -81,6 +83,7 @@ public:
     int simulation_speed = 1;
     bool auto_develop = true, food_shortage = false;
     bool population_growth = true;
+    bool learning_enabled = true;
     int next_person_id = 6, next_migration_day = 12, next_birth_day = 8;
     std::uint64_t births = 0, arrivals = 0, deaths = 0;
     std::array<Tile, map_size * map_size> tiles{};
@@ -121,7 +124,10 @@ public:
     const char* season_name() const;
     std::string serialize() const;
     static World deserialize(const std::string& data);
+    BrainInput observations(const Villager& person, Goal goal, Point destination, double utility) const;
 private:
+    void learn(Villager& person, double terminal_reward = 0);
+    void begin_learning(Villager& person, const BrainInput& input, double base, double adjustment);
     void decide(Villager& person);
     void execute(Villager& person, double dt);
     void discover(Villager& person);

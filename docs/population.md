@@ -108,11 +108,14 @@ world is archived as `saves/previous-village.lvsave`. Switch previous village
 swaps the saved world with the current one. Both retain normal atomic writes
 and backups. Keep the whole saves folder when upgrading or synchronizing.
 
-Version 3 saves include demographics, stable IDs, homes, parents, names, partners,
+Version 4 saves retain demographics, stable IDs, homes, parents, names, partners,
 age progress, death causes, loose supplies, sparse relationships, and growth
-preferences. Versions 1 and 2 upgrade automatically with existing time, goals,
+preferences. Versions 1, 2 and 3 upgrade automatically with existing time, goals,
 inventories, resource changes and PRNG intact. Existing ages are preserved and
 start accumulating birthday progress after upgrade. Initial ancestry is unknown;
 no family history is invented for old residents. Newly upgraded worlds delay
 arrival opportunities rather than immediately adding a crowd. Old binaries
-cannot read version 3 saves. There is no powered-off progression.
+cannot read version 4 saves. There is no powered-off progression.
+
+Each starting resident, newborn and arrival also receives an independent
+[online MLP](neural-learning.md), whose weights and pending experience are saved.
