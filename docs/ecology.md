@@ -141,3 +141,18 @@ Y’s existing CSV export also writes `ecology.csv` (a 4,096-tile habitat snapsh
 and `wildlife.csv` (living animals and their biology/intentions) alongside village
 history in each world’s export directory. These are snapshots, not unbounded
 time-series files.
+
+## Desktop verification
+
+The completed 3,500-day default-world regression retained 20 living residents,
+four births, 26 arrivals, 16 deaths and full shared food storage. Residents
+completed 2,210 repairs, and the founding generation was replaced. Routine
+wood-based maintenance avoids a permanent demand on finite quarry stone.
+This is one tested seed, not a guarantee against difficult climates or disasters.
+
+Focused ecology tests pass with GCC and the same libc++ runtime used by the ARM64
+build; address/undefined-behavior sanitizer checks also pass. Save tests include
+full living/deceased/wildlife populations with maximum replay and route buffers.
+Controller/rendering and save-management smoke tests pass. A short desktop
+20-resident/wildlife run measured 30.19 FPS at the 30 FPS cap, with 8,704 KiB peak
+process RSS. These figures do not establish physical handheld performance.

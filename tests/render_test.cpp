@@ -48,6 +48,7 @@ int main() {
             if (panel == Panel::Saves) graphics.screenshot("build/saves-preview.ppm");
             if (panel == Panel::NewVillage) graphics.screenshot("build/creator-preview.ppm");
             if (panel == Panel::Build) graphics.screenshot("build/build-preview.ppm");
+            if (panel == Panel::Tile) graphics.screenshot("build/tile-preview.ppm");
             if (panel == Panel::Inspector) for (int page = 1; page < 6; ++page) {
                 view.inspector_page = page; graphics.draw(world, view);
                 if (page == 3) graphics.screenshot("build/family-preview.ppm");

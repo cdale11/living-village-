@@ -498,7 +498,7 @@ void Renderer::draw(const World& world, const View& view) {
                 const auto& cell = world.tile(at.x, at.y);
                 const char* terrain[] = {"Grass", "Tree", "Stone", "Water", "Berry bush"};
                 text(102, 80, "TILE " + std::to_string(at.x) + "/" + std::to_string(at.y), cream, 3);
-                text(102, 122, terrain[static_cast<int>(cell.terrain)], muted);
+                text(102, 122, std::string(terrain[static_cast<int>(cell.terrain)]) + " | Elevation " + decimal(cell.elevation), muted);
                 const int id = world.building_at(at);
                 if (id >= 0) {
                     const auto& b = world.buildings[id];
@@ -516,6 +516,13 @@ void Renderer::draw(const World& world, const View& view) {
                     else if (b.kind == BuildingKind::Farm) text(102, 202, "Ripe food " + std::to_string(b.food) + "/12 - renewable crops", cream);
                     else if (b.kind == BuildingKind::FoodStorage) text(102, 202, "Adds 40 to shared food capacity", cream);
                     else if (b.kind == BuildingKind::Stockpile) text(102, 202, "Adds 20 to wood and stone capacity", cream);
+                    else if (b.kind == BuildingKind::Workshop) {
+                        text(102, 202, "Technology " + std::to_string(world.technology_level) + "/2 | Knowledge " + decimal(world.knowledge), cream);
+                        if (world.technology_level < 2) {
+                            const auto upgrade = technology_cost(world.technology_level);
+                            text(102, 244, "Supplies W " + std::to_string(b.upgrade_wood) + "/" + std::to_string(upgrade.wood) + " S " + std::to_string(b.upgrade_stone) + "/" + std::to_string(upgrade.stone) + " Work " + decimal(b.upgrade_work) + "/" + std::to_string(static_cast<int>(upgrade.work)), muted);
+                        } else text(102, 244, "All technologies researched", muted);
+                    }
                     else text(102, 202, b.fuel > 0 ? "Lit - warmth and social comfort" : "No fuel - needs shared wood", cream);
                     if (b.complete) {
                         text(102, 282, "Condition " + decimal(b.condition) + "% | Repair W " + std::to_string(b.repair_wood) + " S " + std::to_string(b.repair_stone), cream);
@@ -528,8 +535,8 @@ void Renderer::draw(const World& world, const View& view) {
                     const bool designated = std::find(world.gather_orders.begin(), world.gather_orders.end(), at) != world.gather_orders.end();
                     text(102, 232, world.can_plan(at) ? "A: PLACE A CONSTRUCTION PLAN" : resource ? (designated ? "A: CANCEL GATHERING AREA" : "A: DESIGNATE GATHERING AREA") : "Plans need reachable empty grass", muted, 2, 504);
                     text(102, 278, "Water " + decimal(cell.moisture * 100) + "% | Nutrients " + decimal(cell.fertility * 100) + "%", muted);
-                    text(102, 302, "Plant health " + decimal(cell.plant_health) + " | Age " + decimal(cell.plant_age) + " days", muted);
-                    text(102, 326, "Flood " + decimal(cell.surface_water) + " Wear " + decimal(cell.compaction * 100) + "%", muted);
+                    text(102, 302, "Health " + decimal(cell.plant_health) + " Age " + std::to_string(static_cast<int>(cell.plant_age)) + "d Disease " + decimal(cell.disease * 100) + "%", muted);
+                    text(102, 326, "Flood " + decimal(cell.surface_water) + " Erosion " + decimal(cell.erosion * 100) + "% Wear " + decimal(cell.compaction * 100) + "%", muted);
                 }
                 text(102, 354, "B BACK", muted); break;
             }
