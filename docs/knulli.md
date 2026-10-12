@@ -7,7 +7,7 @@ The script derives its install location, enters `livingvillage/`, creates save/l
 ## Physical device checks still required
 
 The user confirmed the initial ARM64 package runs on KNULLI. The updated
-neural-learning milestone and Fn+Start shortcut are tested on desktop;
+expanded village-life milestone and Fn+Start shortcut are tested on desktop;
 this expanded build still requires physical device confirmation.
 
 Inspect runtime facts over SSH:
@@ -19,7 +19,7 @@ ls -l /lib/ld-linux-aarch64.so.1
 ls /usr/lib/libSDL2* /lib/libSDL2* 2>/dev/null
 ```
 
-Launch from Ports, then read `livingvillage/logs/game.log`. Startup reports selected/available SDL video backends, renderer and controller name/GUID/mapping mode. Validate movement, every button, zoom, speed, pause, save/load, Fn+Start exit and lid reopening. Check A tile/building plans and gathering areas, X inspector detail pages, and Y autonomous-planning toggle. Check Y population/learning controls, X family/MLP pages, and Start new/previous village. Keep existing saves; they migrate automatically to version 4.
+Launch from Ports, then read `livingvillage/logs/game.log`. Startup reports selected/available SDL video backends, renderer and controller name/GUID/mapping mode. Validate movement, every button, zoom, speed, pause, save/load, Fn+Start exit and lid reopening. Check A tile/building plans and gathering areas, X inspector detail pages, and Y autonomous-planning toggle. Check Y population/learning controls, X family/MLP pages, and Start new/previous village. Keep existing saves; they migrate automatically to version 5.
 
 If video initialization fails, use the error/backend list to choose an override. Do not assume X11. **Only if KMSDRM is available and appropriate for this firmware**, put this in `config/platform.env`:
 
@@ -45,3 +45,7 @@ cd /userdata/roms/ports/livingvillage
 Graphical frame times and memory must be measured with the actual OS backend. The 30 FPS cap is a target; desktop measurements do not establish handheld performance.
 
 Autosaves run every 30 real seconds, and on menu save, focus/background interruption and clean signal exit. Suspend may freeze the process without notification; autosave limits recent progress loss if firmware sends none. Confirm lid behavior physically. Hard power-off/SIGKILL can lose progress since the latest save.
+
+See [device-validation.md](device-validation.md) for a temporary 20-villager
+performance world, graphical frame/RSS logging, battery checks, audio/rumble
+validation and lid testing.

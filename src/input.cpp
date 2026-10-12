@@ -108,4 +108,9 @@ InputState Input::poll() {
     last = state.held;
     return state;
 }
+bool Input::rumble(Uint16 strength, Uint32 duration) {
+    if (controller && sdl.GameControllerRumble) return sdl.GameControllerRumble(controller, strength, strength, duration) == 0;
+    if (joystick && sdl.JoystickRumble) return sdl.JoystickRumble(joystick, strength, strength, duration) == 0;
+    return false;
+}
 } // namespace village

@@ -20,6 +20,7 @@ public:
     void open_devices();
     void handle(const SDL_Event& event);
     InputState poll();
+    bool rumble(Uint16 strength = 8000, Uint32 duration = 120);
     bool diagnostic = false;
     std::string device_name = "Keyboard";
 private:

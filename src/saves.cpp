@@ -20,7 +20,7 @@ void require(bool valid) { if (!valid) throw std::runtime_error("Invalid or unsu
 bool range(double value, double maximum) { return std::isfinite(value) && value >= 0 && value <= maximum; }
 Point read_point(std::istream& in) { Point p; in >> p.x >> p.y; require(in.good() && p.x >= 0 && p.x < 64 && p.y >= 0 && p.y < 64); return p; }
 std::string read_file(const std::filesystem::path& path) {
-    require(std::filesystem::file_size(path) <= 2 * 1024 * 1024);
+    require(std::filesystem::file_size(path) <= 4 * 1024 * 1024);
     std::ifstream in(path, std::ios::binary);
     if (!in) throw std::runtime_error("Cannot open save " + path.string());
     std::ostringstream data; data << in.rdbuf();
@@ -45,10 +45,12 @@ void flush_file(const std::filesystem::path& path, const std::string& data) {
 
 std::string World::serialize() const {
     std::ostringstream out;
-    out << std::setprecision(17) << "LIVING_VILLAGE 4\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
+    out << std::setprecision(17) << "LIVING_VILLAGE 5\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
     out << wood_stock << ' ' << stone_stock << ' ' << auto_develop << ' ' << food_shortage << ' ' << simulation_speed << '\n';
     out << population_growth << ' ' << next_person_id << ' ' << next_migration_day << ' ' << next_birth_day << ' ' << births << ' ' << arrivals << ' ' << deaths << '\n';
-    out << learning_enabled << " NEURAL 1 " << brain_inputs << ' ' << brain_hidden << ' ' << brain_weights << '\n';
+    out << learning_enabled << " NEURAL 2 " << brain_inputs << ' ' << brain_hidden << ' ' << brain_weights << ' ' << replay_capacity << ' ' << work_types << '\n';
+    out << volume << ' ' << rumble_enabled << ' ' << knowledge << ' ' << technology_level << ' '
+        << trade_count << ' ' << help_count << ' ' << conflicts << ' ' << reconciliations << ' ' << event_sequence << '\n';
     out << rng << '\n';
     for (const auto& cell : tiles) out << static_cast<int>(cell.terrain) << ' ' << cell.food << ' ' << cell.regrowth << ' ' << cell.wood << ' ' << cell.stone
         << ' ' << cell.loose_food << ' ' << cell.loose_wood << ' ' << cell.loose_stone << '\n';
@@ -58,7 +60,7 @@ std::string World::serialize() const {
             << b.wood_delivered << ' ' << b.stone_delivered << ' ' << b.initiator << ' ' << b.work << ' ' << b.growth << ' '
             << b.fuel << ' ' << b.food << ' ' << std::quoted(b.initiator_name) << ' ' << b.contributors.size();
         for (int id : b.contributors) out << ' ' << id;
-        out << '\n';
+        out << ' ' << b.upgrade_wood << ' ' << b.upgrade_stone << ' ' << b.upgrade_work << '\n';
     }
     out << gather_orders.size() << '\n';
     for (Point point : gather_orders) out << point.x << ' ' << point.y << '\n';
@@ -76,6 +78,7 @@ std::string World::serialize() const {
             << std::quoted(p.parent_names[0]) << ' ' << std::quoted(p.parent_names[1]) << ' ' << p.last_birth_day << ' '
             << p.death_day << ' ' << std::quoted(p.death_reason) << ' ' << p.family_drive << '\n';
         const auto& brain = p.brain;
+        require(brain.replay_size >= 0 && brain.replay_size <= replay_capacity);
         out << brain.active << ' ' << brain.action << ' ' << brain.updates << ' ' << brain.elapsed << ' ' << brain.progress << ' '
             << brain.start_hunger << ' ' << brain.start_energy << ' ' << brain.start_health << ' ' << brain.start_loneliness << ' '
             << brain.last_reward << ' ' << brain.last_prediction << ' ' << brain.last_error << ' ' << brain.selected_base << ' ' << brain.selected_adjustment << '\n';
@@ -83,24 +86,38 @@ std::string World::serialize() const {
         out << '\n';
         for (double value : brain.pending) out << value << ' ';
         out << '\n';
+        out << brain.replay_size << ' ' << brain.replay_head << ' ' << brain.random_state << ' ' << brain.episodes << ' '
+            << brain.replay_updates << ' ' << brain.experiments << ' ' << brain.selected_exploration << '\n';
+        for (int n = 0; n < brain.replay_size; ++n) {
+            out << brain.replay[n].reward;
+            for (double value : brain.replay[n].input) out << ' ' << value;
+            out << '\n';
+        }
+        out << p.last_conflict_day << ' ' << static_cast<int>(p.occupation);
+        for (double value : p.practice) out << ' ' << value;
+        out << '\n';
         points(p.path); points(p.known_food); points(p.known_wood); points(p.known_stone);
         out << p.relationships.values.size() << '\n';
         for (const auto& relationship : p.relationships.values) out << relationship.first << ' ' << relationship.second << '\n';
         out << p.history.size() << '\n'; for (const auto& line : p.history) out << std::quoted(line) << '\n';
     }
     out << events.size() << '\n'; for (const auto& message : events) out << std::quoted(message) << '\n';
+    out << chronicle.size() << '\n';
+    for (const auto& record : chronicle) out << record.tick << ' ' << std::quoted(record.message) << '\n';
+    out << statistics.size() << '\n';
+    for (const auto& r : statistics) out << r.day << ' ' << r.people << ' ' << r.children << ' ' << r.food << ' ' << r.wood << ' ' << r.stone << ' ' << r.buildings << ' ' << r.technology << ' ' << r.births << ' ' << r.deaths << ' ' << r.trades << '\n';
     const std::string body = out.str(); return body + "CHECKSUM " + std::to_string(checksum(body)) + "\n";
 }
 
 World World::deserialize(const std::string& data) {
-    require(data.size() <= 2 * 1024 * 1024);
+    require(data.size() <= 4 * 1024 * 1024);
     const auto footer = data.rfind("CHECKSUM "); require(footer != std::string::npos);
     std::istringstream trailer(data.substr(footer + 9)); std::uint64_t expected = 0;
     trailer >> expected; require(!trailer.fail()); trailer >> std::ws; require(trailer.eof());
     require(checksum(data.substr(0, footer)) == expected);
     std::istringstream in(data.substr(0, footer)); std::string magic; int version = 0;
-    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 4);
-    std::uint32_t seed = 0; in >> seed; World world(seed);
+    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 5);
+    std::uint32_t seed = 0; in >> seed; World world(seed); world.chronicle.clear(); world.statistics.clear(); world.event_sequence = 0;
     in >> world.ticks >> world.food_stock;
     if (version >= 2) in >> world.wood_stock >> world.stone_stock >> world.auto_develop >> world.food_shortage >> world.simulation_speed;
     require(world.simulation_speed == 1 || world.simulation_speed == 2 || world.simulation_speed == 4);
@@ -110,7 +127,13 @@ World World::deserialize(const std::string& data) {
     if (version >= 4) {
         std::string neural; int schema = 0, inputs = 0, hidden = 0, weights = 0;
         in >> world.learning_enabled >> neural >> schema >> inputs >> hidden >> weights;
-        require(neural == "NEURAL" && schema == 1 && inputs == brain_inputs && hidden == brain_hidden && weights == brain_weights);
+        require(neural == "NEURAL" && schema == (version >= 5 ? 2 : 1) && inputs == brain_inputs && hidden == brain_hidden && weights == brain_weights);
+        if (version >= 5) { int replay = 0, work = 0; in >> replay >> work; require(replay == replay_capacity && work == work_types); }
+    }
+    if (version >= 5) {
+        in >> world.volume >> world.rumble_enabled >> world.knowledge >> world.technology_level >> world.trade_count >> world.help_count >> world.conflicts >> world.reconciliations >> world.event_sequence;
+        require(world.volume >= 0 && world.volume <= 100 && range(world.knowledge, 30) && world.technology_level >= 0 && world.technology_level <= 2
+            && world.trade_count <= 100000000000ULL && world.help_count <= 100000000000ULL && world.conflicts <= 100000000000ULL && world.reconciliations <= 100000000000ULL && world.event_sequence <= 100000000000ULL);
     }
     in >> world.rng;
     require(world.ticks < 100000000000ULL && world.food_stock >= 0 && world.food_stock <= 3000 && world.wood_stock >= 0 && world.wood_stock <= 3000 && world.stone_stock >= 0 && world.stone_stock <= 3000);
@@ -135,11 +158,14 @@ World World::deserialize(const std::string& data) {
                 std::uint32_t mask = 0; in >> mask; require((mask >> 20) == 0);
                 for (int id = 0; id < 20; ++id) if (mask & (1U << id)) b.contributors.push_back(id);
             }
-            require(b.id == index && kind >= 0 && kind <= 4 && b.initiator >= -1 && b.initiator < (version >= 3 ? world.next_person_id : 20));
+            if (version >= 5) in >> b.upgrade_wood >> b.upgrade_stone >> b.upgrade_work;
+            require(b.id == index && kind >= 0 && kind <= (version >= 5 ? 5 : 4) && b.initiator >= -1 && b.initiator < (version >= 3 ? world.next_person_id : 20));
             b.kind = static_cast<BuildingKind>(kind); auto cost = building_cost(b.kind);
             require(b.wood_delivered >= 0 && b.wood_delivered <= cost.wood && b.stone_delivered >= 0 && b.stone_delivered <= cost.stone && range(b.work, cost.work)
                 && range(b.growth, 45) && range(b.fuel, 270) && b.food >= 0 && b.food <= 12);
             require(world.passable(b.position.x, b.position.y) && world.building_at(b.position) < 0 && (b.kind == BuildingKind::Farm || b.food == 0));
+            require(b.upgrade_wood >= 0 && b.upgrade_wood <= 6 && b.upgrade_stone >= 0 && b.upgrade_stone <= 4 && range(b.upgrade_work, 30)
+                && ((b.kind == BuildingKind::Workshop && b.complete) || (b.upgrade_wood == 0 && b.upgrade_stone == 0 && b.upgrade_work == 0)));
             require(b.complete || b.work == 0 || b.supplied()); world.buildings.push_back(b);
         }
         int orders = 0; in >> orders; require(orders >= 0 && orders <= 16);
@@ -178,12 +204,24 @@ World World::deserialize(const std::string& data) {
             require(p.alive() ? (p.death_day == 0 && p.death_reason.empty()) : (p.death_day > 0 && !p.death_reason.empty() && p.food == 0 && p.wood == 0 && p.stone == 0));
         }
         if (version >= 4) {
+            p.brain.initialize(world.seed, p.id);
             auto& brain = p.brain;
             in >> brain.active >> brain.action >> brain.updates >> brain.elapsed >> brain.progress
                 >> brain.start_hunger >> brain.start_energy >> brain.start_health >> brain.start_loneliness
                 >> brain.last_reward >> brain.last_prediction >> brain.last_error >> brain.selected_base >> brain.selected_adjustment;
             for (auto& weight : brain.weights) in >> weight;
             for (auto& value : brain.pending) in >> value;
+            if (version >= 5) {
+                in >> brain.replay_size >> brain.replay_head >> brain.random_state >> brain.episodes >> brain.replay_updates >> brain.experiments >> brain.selected_exploration;
+                require(brain.replay_size >= 0 && brain.replay_size <= replay_capacity);
+                for (int n = 0; n < brain.replay_size; ++n) {
+                    in >> brain.replay[n].reward;
+                    for (double& value : brain.replay[n].input) in >> value;
+                }
+                int occupation = 0; in >> p.last_conflict_day >> occupation; require(p.last_conflict_day >= -1000 && p.last_conflict_day <= world.day()); require(occupation >= 0 && occupation <= work_types);
+                p.occupation = static_cast<Occupation>(occupation);
+                for (double& practice : p.practice) { in >> practice; require(range(practice, 100)); }
+            }
             require(!in.fail() && brain.valid() && (!brain.active || (p.alive() && brain.action == goal)));
         } else p.brain.initialize(world.seed, p.id);
         points(p.path, 4096, true); points(p.known_food, 48, false);
@@ -219,6 +257,25 @@ World World::deserialize(const std::string& data) {
     require(world.food_stock <= world.food_capacity() && world.wood_stock <= world.material_capacity() && world.stone_stock <= world.material_capacity());
     int event_count = 0; in >> event_count; require(event_count >= 0 && event_count <= 24); world.events.clear();
     for (int n = 0; n < event_count; ++n) { std::string message; in >> std::quoted(message); require(message.size() <= 240); world.events.push_back(message); }
+    if (version >= 5) {
+        int records = 0; in >> records; require(records >= 0 && records <= 512);
+        for (int n = 0; n < records; ++n) {
+            HistoryRecord r; in >> r.tick >> std::quoted(r.message);
+            require(r.tick <= world.ticks && r.message.size() <= 240 && (world.chronicle.empty() || world.chronicle.back().tick <= r.tick)); world.chronicle.push_back(r);
+        }
+        int days = 0; in >> days; require(days >= 0 && days <= 128);
+        for (int n = 0; n < days; ++n) {
+            DailyRecord r; in >> r.day >> r.people >> r.children >> r.food >> r.wood >> r.stone >> r.buildings >> r.technology >> r.births >> r.deaths >> r.trades;
+            require(r.day >= 1 && r.day <= world.day() && r.people >= 0 && r.people <= 20 && r.children >= 0 && r.children <= r.people
+                && r.food >= 0 && r.food <= 3000 && r.wood >= 0 && r.wood <= 3000 && r.stone >= 0 && r.stone <= 3000 && r.buildings >= 0 && r.buildings <= 64
+                && r.technology >= 0 && r.technology <= world.technology_level && r.births <= world.births && r.deaths <= world.deaths && r.trades <= world.trade_count
+                && (world.statistics.empty() || world.statistics.back().day < r.day)); world.statistics.push_back(r);
+        }
+    } else {
+        world.record_day();
+        for (const auto& message : world.events) world.chronicle.push_back({world.ticks, "Imported log: " + message.substr(0, 226)});
+        world.event_sequence = world.chronicle.size();
+    }
     require(!in.fail()); in >> std::ws; require(in.eof()); return world;
 }
 
@@ -245,6 +302,23 @@ void save_atomic(const World& world, const std::filesystem::path& filename) {
     int result = ::fsync(directory_fd);
     ::close(directory_fd);
     if (result != 0) throw std::runtime_error("Save directory flush failed");
+}
+
+void export_history(const World& world, const std::filesystem::path& directory) {
+    std::filesystem::create_directories(directory);
+    auto quoted = [](const std::string& value) { std::string result = "\""; for (char c : value) { if (c == '\"') result += '\"'; result += c; } return result + '\"'; };
+    std::ostringstream events, days, people;
+    events << "seed,tick,day,event\n";
+    for (const auto& r : world.chronicle) events << world.seed << ',' << r.tick << ',' << 1 + r.tick / 2400 << ',' << quoted(r.message) << '\n';
+    days << "seed,day,population,children,food,wood,stone,buildings,technology,births,deaths,trades\n";
+    for (const auto& r : world.statistics) days << world.seed << ',' << r.day << ',' << r.people << ',' << r.children << ',' << r.food << ',' << r.wood << ',' << r.stone << ',' << r.buildings << ',' << r.technology << ',' << r.births << ',' << r.deaths << ',' << r.trades << '\n';
+    people << "seed,id,name,age,alive,role,home,partner,neural_updates,episodes,replayed,experiments,death_reason\n";
+    for (const auto& p : world.villagers) people << world.seed << ',' << p.id << ',' << quoted(p.name) << ',' << p.age << ',' << p.alive() << ',' << quoted(occupation_name(p.occupation)) << ',' << p.home << ',' << p.partner << ',' << p.brain.updates << ',' << p.brain.episodes << ',' << p.brain.replay_updates << ',' << p.brain.experiments << ',' << quoted(p.death_reason) << '\n';
+    const std::pair<const char*, std::string> files[] = {{"village-history.csv", events.str()}, {"village-statistics.csv", days.str()}, {"residents.csv", people.str()}};
+    for (const auto& file : files) { const auto path = directory / file.first; flush_file(path.string() + ".tmp", file.second); std::filesystem::rename(path.string() + ".tmp", path); }
+    const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
+    if (fd < 0) throw std::runtime_error("Cannot flush history directory");
+    const int result = ::fsync(fd); ::close(fd); if (result != 0) throw std::runtime_error("History export flush failed");
 }
 
 World load_save(const std::filesystem::path& filename, bool* used_backup) {

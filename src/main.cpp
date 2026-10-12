@@ -1,4 +1,6 @@
 #include "living_village/input.hpp"
+#include "living_village/feedback.hpp"
+#include "living_village/performance.hpp"
 #include "living_village/render.hpp"
 #include "living_village/saves.hpp"
 #include "living_village/ui.hpp"
@@ -15,9 +17,9 @@ namespace {
 volatile std::sig_atomic_t stop_requested = 0;
 void signal_stop(int) { stop_requested = 1; }
 struct Options {
-    bool fullscreen = false, headless = false, no_save = false, new_world = false, diagnose = false;
+    bool fullscreen = false, headless = false, no_save = false, new_world = false, diagnose = false, profile = false;
     std::uint32_t seed = 20261011;
-    int frames = 0, steps = 24000;
+    int frames = 0, steps = 24000, benchmark_villagers = 0;
     std::string save_dir = "saves", screenshot;
 };
 Options options(int argc, char** argv) {
@@ -29,6 +31,8 @@ Options options(int argc, char** argv) {
         else if (arg == "--headless") result.headless = true;
         else if (arg == "--no-save") result.no_save = true;
         else if (arg == "--new") result.new_world = true;
+        else if (arg == "--profile") result.profile = true;
+        else if (arg == "--benchmark-villagers") { result.benchmark_villagers = std::stoi(value()); result.no_save = true; result.new_world = true; result.profile = true; }
         else if (arg == "--diagnose-input") result.diagnose = true;
         else if (arg == "--seed") result.seed = static_cast<std::uint32_t>(std::stoul(value()));
         else if (arg == "--steps") result.steps = std::stoi(value());
@@ -39,11 +43,12 @@ Options options(int argc, char** argv) {
             std::cout << "Living Village C++ / SDL2\n"
                       << "--fullscreen --seed N --save-dir PATH --new --no-save\n"
                       << "--headless --steps N   (no display, SDL or save writes)\n"
-                      << "--diagnose-input --frames N --screenshot FILE.ppm\n";
+                      << "--diagnose-input --frames N --screenshot FILE.ppm\n"
+                      << "--profile --benchmark-villagers N (6..20, temporary world, no saves)\n";
             std::exit(0);
         } else throw std::runtime_error("Unknown option " + arg);
     }
-    if (result.steps < 1 || result.steps > 100000000 || result.frames < 0) throw std::runtime_error("Steps/frames out of range");
+    if ((result.benchmark_villagers != 0 && (result.benchmark_villagers < 6 || result.benchmark_villagers > 20)) || result.steps < 1 || result.steps > 100000000 || result.frames < 0) throw std::runtime_error("Steps/frames out of range");
     return result;
 }
 }
@@ -53,6 +58,13 @@ int main(int argc, char** argv) {
     try {
         const Options config = options(argc, argv);
         World world(config.seed);
+        if (config.benchmark_villagers) {
+            world.population_growth = false;
+            while (static_cast<int>(world.villagers.size()) < config.benchmark_villagers) {
+                Villager p; p.id = world.next_person_id++; p.name = "Benchmark " + std::to_string(p.id); p.brain.initialize(world.seed, p.id);
+                p.x = 30 + p.id % 5; p.y = 30 + (p.id / 5) % 5; world.villagers.push_back(p);
+            }
+        }
         if (config.headless) {
             auto start = std::chrono::steady_clock::now();
             for (int i = 0; i < config.steps; ++i) world.update();
@@ -95,11 +107,13 @@ int main(int argc, char** argv) {
         std::cout << "Renderer: " << renderer_info.name << '\n';
         if (auto* mappings = sdl.RWFromFile("config/gamecontrollerdb.txt", "r")) sdl.GameControllerAddMappingsFromRW(mappings, 1);
         Input input(sdl); input.load_config("config/controller.cfg"); input.diagnostic = config.diagnose; input.open_devices();
-        Renderer graphics(sdl, renderer.get());
+        Renderer graphics(sdl, renderer.get()); Feedback feedback(sdl);
+        std::uint64_t last_feedback = world.event_sequence;
         Uint32 previous = sdl.GetTicks(), last_save = previous;
         double accumulator = 0;
         int frame_count = 0;
-        bool running = true;
+        bool running = true; Performance performance; const int starting_battery = config.profile ? battery_percent() : -1;
+        if (config.profile) std::cout << "Profile start: residents=" << world.alive_count() << " battery_percent=" << starting_battery << "\n";
         std::cout << std::flush;
         auto save = [&]() {
             if (config.no_save) return true;
@@ -108,18 +122,24 @@ int main(int argc, char** argv) {
             catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "SAVE FAILED - CHECK LOG / FREE SPACE"; return false; }
         };
         while (running && !stop_requested) {
+            const auto frame_start = std::chrono::steady_clock::now();
+            int frame_steps = 0;
             const Uint32 begin = sdl.GetTicks();
             const double elapsed = std::min((begin - previous) / 1000.0, 0.2);
             previous = begin;
             SDL_Event event;
             while (sdl.PollEvent(&event)) {
                 if (event.type == SDL_QUIT) running = false;
-                if (event.type == SDL_APP_WILLENTERBACKGROUND || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)) {
+                const bool benchmark_focus = config.benchmark_villagers && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST;
+                if (benchmark_focus) std::cout << "Benchmark: ignoring window focus loss in temporary diagnostic world\n";
+                if (!benchmark_focus && ((event.type == SDL_APP_WILLENTERBACKGROUND || event.type == SDL_APP_DIDENTERBACKGROUND) || (event.type == SDL_WINDOWEVENT && (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST || event.window.event == SDL_WINDOWEVENT_MINIMIZED)))) {
                     ui.view.panel = Panel::Menu; ui.view.menu_index = 0; save(); accumulator = 0;
                 }
                 input.handle(event);
             }
-            const auto request = ui.update(input.poll(), world, elapsed);
+            const auto controls = input.poll();
+            if (std::any_of(controls.pressed.begin(), controls.pressed.end(), [](bool held) { return held; })) feedback.play(Cue::Confirm, world.volume);
+            const auto request = ui.update(controls, world, elapsed);
             world.simulation_speed = ui.view.speed;
             if (request == Request::Save) save();
             else if (request == Request::Load) {
@@ -139,6 +159,14 @@ int main(int argc, char** argv) {
             } else if (request == Request::ToggleLearning) {
                 world.learning_enabled = !world.learning_enabled;
                 ui.view.status = world.learning_enabled ? "Online neural learning enabled" : "Learning paused - learned decisions retained";
+            } else if (request == Request::Volume) {
+                world.volume = world.volume >= 100 ? 0 : std::min(100, world.volume + 20);
+                if (world.volume == 0) feedback.mute(); else feedback.play(Cue::Confirm, world.volume);
+            } else if (request == Request::ToggleRumble) {
+                world.rumble_enabled = !world.rumble_enabled; if (world.rumble_enabled) input.rumble(); else input.rumble(0, 0);
+            } else if (request == Request::ExportHistory) {
+                try { export_history(world, std::filesystem::path(config.save_dir) / "exports"); ui.view.status = "History exported to saves/exports"; }
+                catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "EXPORT FAILED - CHECK LOG"; }
             } else if (request == Request::NewVillage) {
                 try {
                     if (!config.no_save) save_atomic(world, std::filesystem::path(config.save_dir) / "previous-village.lvsave");
@@ -161,13 +189,23 @@ int main(int argc, char** argv) {
             if (ui.view.panel == Panel::Map) {
                 accumulator += elapsed * ui.view.speed;
                 int steps = 0;
-                while (accumulator >= fixed_step && steps++ < 8) { world.update(); accumulator -= fixed_step; }
+                while (accumulator >= fixed_step && steps++ < 8) { ++frame_steps; world.update(); accumulator -= fixed_step; }
             } else accumulator = 0;
             bool found = false;
             for (std::size_t index = 0; index < world.villagers.size(); ++index) if (world.villagers[index].id == watched_id) { ui.view.selected = static_cast<int>(index); found = true; break; }
             if (!found) {
                 ui.view.selected = 0;
                 for (std::size_t index = 0; index < world.villagers.size(); ++index) if (world.villagers[index].alive()) { ui.view.selected = static_cast<int>(index); break; }
+            }
+            if (last_feedback != world.event_sequence) {
+                last_feedback = world.event_sequence;
+                if (!world.chronicle.empty()) {
+                    const auto& message = world.chronicle.back().message;
+                    if (message.find("Completed:") != std::string::npos || message.find("Improved tools:") != std::string::npos || message.find("Irrigation:") != std::string::npos) { feedback.play(Cue::Complete, world.volume); if (world.rumble_enabled) input.rumble(); }
+                    else if (message.find("is born") != std::string::npos) feedback.play(Cue::Birth, world.volume);
+                    else if (message.find("exchange food") != std::string::npos) feedback.play(Cue::Trade, world.volume);
+                    else if (message.find("died:") != std::string::npos || message.find("running low") != std::string::npos) feedback.play(Cue::Warning, world.volume);
+                }
             }
             if (begin - last_save >= 30000) save();
             graphics.draw(world, ui.view);
@@ -178,9 +216,15 @@ int main(int argc, char** argv) {
             }
             sdl.RenderPresent(renderer.get());
             const Uint32 render_time = sdl.GetTicks() - begin;
+            const auto work_finished = std::chrono::steady_clock::now();
             if (render_time < 33) sdl.Delay(33 - render_time);
+            if (config.profile) {
+                performance.frame(std::chrono::duration<double, std::milli>(work_finished - frame_start).count(), std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - frame_start).count(), frame_steps);
+                if (frame_count % 300 == 0) std::cout << performance.report() << '\n' << std::flush;
+            }
         }
         const bool saved = save();
+        if (config.profile) std::cout << performance.report() << " battery_start=" << starting_battery << " battery_end=" << battery_percent() << "\n";
         std::cout << "Exited cleanly after " << frame_count << " frames\n";
         return saved ? 0 : 1;
     } catch (const std::exception& error) {

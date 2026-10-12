@@ -17,7 +17,10 @@ enum class Goal : int { Explore, Forage, Eat, Rest, GatherWood, CollectStone, De
 struct Tile { Terrain terrain = Terrain::Grass; int food = 0; double regrowth = 0; int wood = 0, stone = 0; int loose_food = 0, loose_wood = 0, loose_stone = 0; };
 struct Point { int x = 0, y = 0; bool operator==(const Point& b) const { return x == b.x && y == b.y; } };
 constexpr Point camp{32, 32};
-enum class BuildingKind : int { Shelter, FoodStorage, Stockpile, Farm, Campfire };
+enum class BuildingKind : int { Shelter, FoodStorage, Stockpile, Farm, Campfire, Workshop };
+enum class Occupation : int { Generalist, Forager, Woodcutter, Stoneworker, Farmer, Builder, Caregiver, Carrier };
+const char* occupation_name(Occupation occupation);
+constexpr int work_types = 7;
 struct Building {
     int id = 0;
     BuildingKind kind = BuildingKind::Shelter;
@@ -26,6 +29,8 @@ struct Building {
     int wood_delivered = 0, stone_delivered = 0, initiator = -1;
     double work = 0, growth = 0, fuel = 0;
     int food = 0;
+    int upgrade_wood = 0, upgrade_stone = 0;
+    double upgrade_work = 0;
     std::vector<int> contributors;
     std::string initiator_name;
     void contribute(int person_id);
@@ -35,6 +40,7 @@ struct Building {
 };
 struct BuildingCost { int wood, stone; double work; };
 BuildingCost building_cost(BuildingKind kind);
+BuildingCost technology_cost(int level);
 const char* building_name(BuildingKind kind);
 struct Relationships {
     std::map<int, double> values;
@@ -43,6 +49,9 @@ struct Relationships {
 };
 struct Villager {
     Brain brain;
+    Occupation occupation = Occupation::Generalist;
+    std::array<double, work_types> practice{};
+    int last_conflict_day = -1000;
     int id = 0;
     std::string name;
     double x = 32, y = 32;
@@ -73,6 +82,11 @@ struct Villager {
     bool child() const { return age < 16; }
 };
 
+struct HistoryRecord { std::uint64_t tick = 0; std::string message; };
+struct DailyRecord {
+    int day = 1, people = 0, children = 0, food = 0, wood = 0, stone = 0, buildings = 0, technology = 0;
+    std::uint64_t births = 0, deaths = 0, trades = 0;
+};
 class World {
 public:
     explicit World(std::uint32_t seed = 20261011);
@@ -84,6 +98,13 @@ public:
     bool auto_develop = true, food_shortage = false;
     bool population_growth = true;
     bool learning_enabled = true;
+    int volume = 40;
+    bool rumble_enabled = true;
+    double knowledge = 0;
+    int technology_level = 0;
+    std::uint64_t trade_count = 0, help_count = 0, conflicts = 0, reconciliations = 0, event_sequence = 0;
+    std::deque<HistoryRecord> chronicle;
+    std::deque<DailyRecord> statistics;
     int next_person_id = 6, next_migration_day = 12, next_birth_day = 8;
     std::uint64_t births = 0, arrivals = 0, deaths = 0;
     std::array<Tile, map_size * map_size> tiles{};
@@ -125,9 +146,19 @@ public:
     std::string serialize() const;
     static World deserialize(const std::string& data);
     BrainInput observations(const Villager& person, Goal goal, Point destination, double utility) const;
+    bool research_available() const;
+    int research_wood_needed(const Building& workshop) const;
+    int research_stone_needed(const Building& workshop) const;
+    bool research(Villager& person, Building& workshop, double dt);
+    void record_day();
 private:
+    double social_exchange(Villager& person, Villager& other);
+    void resource_conflict(Villager& person);
     void learn(Villager& person, double terminal_reward = 0);
     void begin_learning(Villager& person, const BrainInput& input, double base, double adjustment);
+    void practice_work(Villager& person, Goal goal, double amount);
+    void update_occupation(Villager& person);
+    double work_bias(const Villager& person, Goal goal) const;
     void decide(Villager& person);
     void execute(Villager& person, double dt);
     void discover(Villager& person);

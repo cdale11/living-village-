@@ -25,6 +25,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         view.panel = Panel::Speed; view.menu_index = view.speed == 1 ? 0 : view.speed == 2 ? 1 : 2;
     } else if (input.hit(Button::Overview)) view.panel = view.panel == Panel::Overview ? Panel::Map : Panel::Overview;
     else if (input.hit(Button::Inspect)) view.panel = view.panel == Panel::Inspector ? Panel::Map : Panel::Inspector;
+    if (view.panel == Panel::Overview && view.overview_page == 5 && input.hit(Button::Next)) return Request::ToggleRumble;
     if (input.hit(Button::Previous)) cycle(world, -1);
     if (input.hit(Button::Next)) cycle(world, 1);
     if (input.hit(Button::ZoomOut)) view.tile_size = std::max(16, view.tile_size - 4);
@@ -32,18 +33,18 @@ Request Interface::update(const InputState& input, const World& world, double el
     repeat -= elapsed;
     if (std::abs(input.y) < .5) repeat = 0;
     if ((view.panel == Panel::Menu || view.panel == Panel::Speed || view.panel == Panel::Build) && std::abs(input.y) >= .5 && repeat <= 0) {
-        const int count = view.panel == Panel::Speed ? 3 : view.panel == Panel::Menu ? 7 : 5;
+        const int count = view.panel == Panel::Speed ? 3 : view.panel == Panel::Menu ? 7 : 6;
         view.menu_index = (view.menu_index + count + (input.y > 0 ? 1 : -1)) % count;
         repeat = .2;
     }
     page_repeat -= elapsed;
     if (std::abs(input.x) < .5) page_repeat = 0;
     if (view.panel == Panel::Inspector && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.inspector_page = (view.inspector_page + 5 + (input.x > 0 ? 1 : -1)) % 5;
+        view.inspector_page = (view.inspector_page + 6 + (input.x > 0 ? 1 : -1)) % 6;
         page_repeat = .2;
     }
     if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.overview_page = (view.overview_page + 4 + (input.x > 0 ? 1 : -1)) % 4;
+        view.overview_page = (view.overview_page + 6 + (input.x > 0 ? 1 : -1)) % 6;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
@@ -78,6 +79,8 @@ Request Interface::update(const InputState& input, const World& world, double el
         else if (view.panel == Panel::Build) return Request::Plan;
         else if (view.panel == Panel::Overview && view.overview_page < 2) return view.overview_page == 0 ? Request::ToggleDevelopment : Request::ToggleGrowth;
         else if (view.panel == Panel::Overview && view.overview_page == 3) return Request::ToggleLearning;
+        else if (view.panel == Panel::Overview && view.overview_page == 4) return Request::ExportHistory;
+        else if (view.panel == Panel::Overview && view.overview_page == 5) return Request::Volume;
         else if (view.panel == Panel::NewVillage) return Request::NewVillage;
     }
     return Request::None;

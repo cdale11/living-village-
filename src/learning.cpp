@@ -7,7 +7,7 @@ BrainInput World::observations(const Villager& p, Goal goal, Point destination, 
     BrainInput input{};
     input[static_cast<int>(goal)] = 1;
     int wood_need = 0, stone_need = 0;
-    for (const auto& b : buildings) if (!b.complete) { wood_need += b.wood_needed(); stone_need += b.stone_needed(); }
+    for (const auto& b : buildings) { if (!b.complete) { wood_need += b.wood_needed(); stone_need += b.stone_needed(); } else if (b.kind == BuildingKind::Workshop) { wood_need += research_wood_needed(b); stone_need += research_stone_needed(b); } }
     const double trip = std::abs(p.x - destination.x) + std::abs(p.y - destination.y);
     const std::array<double, brain_context> context{{
         p.hunger / 100, p.energy / 100, p.health / 100, p.loneliness / 100,
@@ -29,7 +29,7 @@ void World::learn(Villager& p, double terminal_reward) {
         + .2 * (brain.start_loneliness - p.loneliness) / 45
         + .8 * (p.health - brain.start_health) / 20
         - std::min(.6, brain.elapsed * .003);
-    if (learning_enabled) brain.train(brain.pending, outcome);
+    if (learning_enabled) brain.observe(brain.pending, outcome);
     brain.active = false;
 }
 void World::begin_learning(Villager& p, const BrainInput& input, double base, double adjustment) {
@@ -38,6 +38,7 @@ void World::begin_learning(Villager& p, const BrainInput& input, double base, do
     brain.elapsed = brain.progress = 0;
     brain.start_hunger = p.hunger; brain.start_energy = p.energy;
     brain.start_health = p.health; brain.start_loneliness = p.loneliness;
+    brain.selected_exploration = 0;
     brain.selected_base = base; brain.selected_adjustment = adjustment;
 }
 } // namespace village

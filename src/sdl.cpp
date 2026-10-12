@@ -15,6 +15,9 @@ SDLApi::SDLApi() {
         if (!name) throw std::runtime_error("SDL2 is missing SDL_" #name);
         VILLAGE_SDL_FUNCTIONS(VILLAGE_LOAD)
 #undef VILLAGE_LOAD
+#define VILLAGE_OPTIONAL(name) name = reinterpret_cast<decltype(name)>(dlsym(library, "SDL_" #name));
+        VILLAGE_SDL_OPTIONAL(VILLAGE_OPTIONAL)
+#undef VILLAGE_OPTIONAL
     } catch (...) { dlclose(library); library = nullptr; throw; }
 }
 SDLApi::~SDLApi() { if (library) dlclose(library); }

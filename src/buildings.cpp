@@ -4,6 +4,7 @@
 namespace village {
 BuildingCost building_cost(BuildingKind kind) {
     switch (kind) {
+        case BuildingKind::Workshop: return {12, 8, 28};
         case BuildingKind::Shelter: return {12, 4, 24};
         case BuildingKind::FoodStorage: return {10, 2, 18};
         case BuildingKind::Stockpile: return {8, 4, 16};
@@ -14,6 +15,7 @@ BuildingCost building_cost(BuildingKind kind) {
 }
 const char* building_name(BuildingKind kind) {
     switch (kind) {
+        case BuildingKind::Workshop: return "Workshop";
         case BuildingKind::Shelter: return "Shelter";
         case BuildingKind::FoodStorage: return "Food storage";
         case BuildingKind::Stockpile: return "Stockpile";
@@ -50,7 +52,7 @@ bool World::can_plan(Point point) const {
     return !route(camp, point).empty();
 }
 bool World::plan(BuildingKind kind, Point point, int initiator) {
-    if (static_cast<int>(kind) < 0 || static_cast<int>(kind) > 4 || initiator < -1 || (initiator >= 0 && !person(initiator)) || !can_plan(point)) return false;
+    if (static_cast<int>(kind) < 0 || static_cast<int>(kind) > 5 || initiator < -1 || (initiator >= 0 && !person(initiator)) || !can_plan(point)) return false;
     Building site;
     site.id = static_cast<int>(buildings.size()); site.kind = kind; site.position = point; site.initiator = initiator;
     if (initiator >= 0) site.initiator_name = person_name(initiator);
@@ -84,6 +86,7 @@ void World::update_needs() {
     if (food_stock < 12 && farms < (alive_count() + 2) / 3) needed = BuildingKind::Farm;
     else if (future_shelter < wanted_shelter) needed = BuildingKind::Shelter;
     else if (food_stock >= food_capacity() * 3 / 4 && stores == 0) needed = BuildingKind::FoodStorage;
+    else if (knowledge >= 8 && food_stock >= alive_count() * 2 && std::none_of(buildings.begin(), buildings.end(), [](const Building& b) { return b.kind == BuildingKind::Workshop; })) needed = BuildingKind::Workshop;
     else return;
     // Search a bounded ring around camp; request arises from current needs.
     for (int radius = 2; radius <= 6; ++radius)

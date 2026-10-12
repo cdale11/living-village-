@@ -119,7 +119,7 @@ Relationships are bounded and each villager keeps six significant experiences.
 
 ## Persistence and bounds
 
-Version 4 saves record all resources, buildings, invested materials, progress,
+Version 5 saves record all resources, buildings, invested materials, progress,
 contributors, crops, fuel, gathering areas, skills, relationships, experiences,
 goals/targets, paths, memories, settings and PRNG state. Version 1 saves upgrade
 on load, preserving old villagers/time/inventories/terrain/goals/PRNG and adding
@@ -137,3 +137,7 @@ real cooperative delivery, unsupplied construction, building effects,
 designations, seasons, controller planning, 20 active villagers and 300 days
 of six-agent survival. Cross-architecture floating-point histories are not
 promised to be identical. There is no powered-off progression or game network.
+
+Version 5 retains replay, local neural RNG, occupations, technology, staged
+upgrade supplies, social counters, bounded chronicle/statistics and feedback
+settings. The workshop and social/economy rules are in [society.md](society.md).

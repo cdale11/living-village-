@@ -25,6 +25,8 @@ void Brain::initialize(std::uint32_t world_seed, int person_id) {
         state ^= state << 13; state ^= state >> 17; state ^= state << 5;
         weight = (static_cast<double>(state % 20001) / 10000 - 1) * .08;
     }
+    random_state = state; replay = {}; replay_size = replay_head = 0;
+    episodes = replay_updates = experiments = 0; selected_exploration = 0;
     pending.fill(0); active = false; action = 0; updates = 0;
     elapsed = progress = start_hunger = start_energy = start_health = start_loneliness = 0;
     last_reward = last_prediction = last_error = selected_base = selected_adjustment = 0;
@@ -35,15 +37,15 @@ double Brain::predict(const BrainInput& input) const {
     for (int h = 0; h < brain_hidden; ++h) sum += weights[output_offset + h] * hidden[h];
     return std::tanh(sum);
 }
-void Brain::train(const BrainInput& input, double reward) {
-    if (!std::isfinite(reward)) return;
+void Brain::train(const BrainInput& input, double reward, double rate) {
+    if (!std::isfinite(reward) || !std::isfinite(rate) || rate <= 0 || rate > .025) return;
     for (double value : input) if (!std::isfinite(value) || std::abs(value) > 1) return;
     const auto hidden = activate(*this, input);
     const double prediction = predict(input);
     const double target = std::clamp(reward, -1.0, 1.0);
     const double delta = std::clamp((prediction - target) * (1 - prediction * prediction), -1.0, 1.0);
     auto adjust = [&](int index, double gradient) {
-        weights[index] = std::clamp(weights[index] - .025 * std::clamp(gradient, -1.0, 1.0), -3.0, 3.0);
+        weights[index] = std::clamp(weights[index] - rate * std::clamp(gradient, -1.0, 1.0), -3.0, 3.0);
     };
     // Hidden gradient must use output weights from before the update.
     for (int h = 0; h < brain_hidden; ++h) {
@@ -57,10 +59,54 @@ void Brain::train(const BrainInput& input, double reward) {
     if (updates < 100000000000ULL) ++updates;
     last_prediction = prediction; last_reward = target; last_error = target - prediction;
 }
+std::uint32_t Brain::random() {
+    random_state ^= random_state << 13; random_state ^= random_state >> 17; random_state ^= random_state << 5;
+    return random_state;
+}
+int Brain::exploration(bool allowed) {
+    if (!allowed || random() % 8 != 0) return -1;
+    return static_cast<int>(random() % brain_actions);
+}
+void Brain::observe(const BrainInput& input, double reward) {
+    if (!std::isfinite(reward)) return;
+    int flags = 0;
+    for (int i = 0; i < brain_inputs; ++i) {
+        const double value = input[i];
+        if (!std::isfinite(value) || value < 0 || value > 1) return;
+        if (i < brain_actions) { if (value != 0 && value != 1) return; flags += static_cast<int>(value); }
+    }
+    if (flags != 1) return;
+    train(input, reward);
+    const double prediction = last_prediction, error = last_error, target = last_reward;
+    // One old sample per new outcome, at half rate. No frame-based training loop.
+    if (replay_size > 0) {
+        const auto& old = replay[random() % static_cast<unsigned>(replay_size)];
+        train(old.input, old.reward, .0125);
+        if (replay_updates < 100000000000ULL) ++replay_updates;
+    }
+    last_prediction = prediction; last_error = error; last_reward = target;
+    replay[replay_head] = {input, std::clamp(reward, -1.0, 1.0)};
+    replay_head = (replay_head + 1) % replay_capacity;
+    replay_size = std::min(replay_capacity, replay_size + 1);
+    if (episodes < 100000000000ULL) ++episodes;
+}
 bool Brain::valid() const {
     auto bounded = [](double value, double maximum) { return std::isfinite(value) && std::abs(value) <= maximum; };
     for (double weight : weights) if (!bounded(weight, 3)) return false;
     for (double value : pending) if (!bounded(value, 1)) return false;
+    if (replay_size < 0 || replay_size > replay_capacity || replay_head < 0 || replay_head >= replay_capacity
+        || (replay_size < replay_capacity && replay_head != replay_size) || random_state == 0
+        || episodes > 100000000000ULL || replay_updates > 100000000000ULL || experiments > 100000000000ULL
+        || !bounded(selected_exploration, 8) || selected_exploration < 0) return false;
+    for (int n = 0; n < replay_size; ++n) {
+        if (!bounded(replay[n].reward, 1)) return false;
+        int flags = 0;
+        for (int i = 0; i < brain_inputs; ++i) {
+            if (!bounded(replay[n].input[i], 1) || replay[n].input[i] < 0) return false;
+            if (i < brain_actions) { if (replay[n].input[i] != 0 && replay[n].input[i] != 1) return false; flags += static_cast<int>(replay[n].input[i]); }
+        }
+        if (flags != 1) return false;
+    }
     if (active) {
         for (int i = 0; i < brain_actions; ++i) if (pending[i] != (i == action ? 1.0 : 0.0)) return false;
     }

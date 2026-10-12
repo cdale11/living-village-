@@ -193,6 +193,8 @@ void World::prune_history() {
 void World::update_population() {
     update_homes();
     for (auto& p : villagers) if (p.alive()) {
+        for (double& practice : p.practice) practice *= .98;
+        update_occupation(p);
         if (++p.age_days >= days_per_year) {
             p.age_days = 0; ++p.age;
             if (p.age == 16) { remember(p, "Grew old enough for village work"); event(p.name + " reaches working age"); }

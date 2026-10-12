@@ -64,9 +64,10 @@ and long or unproductive trips incur cost. Gathering also gains learned skills,
 which remain distinct from neural weights.
 
 Training uses squared prediction error, learning rate 0.025, clipped gradients
-and weights bounded to [-3, 3]. There is one bounded update per decision
-transition, with no replay buffer or growing dataset. Only the current pending
-experience is retained. This is short-horizon feedback: it does not yet propagate
+and weights bounded to [-3, 3]. Every new decision outcome receives one update, plus one old replay sample
+at half the learning rate. A fixed 32-outcome ring replaces older samples;
+there is no growing dataset. The pending experience, replay and per-agent RNG
+are retained in saves. Last reward/error report the fresh outcome. This is short-horizon feedback: it does not yet propagate
 credit through entire construction or family lifetimes, and the reward rules
 influence what it learns. Different residents can develop different preferences;
 improvement in every village is not promised.
@@ -87,13 +88,13 @@ improvement in every village is not promised.
 
 ## Saves and tests
 
-Save version **4** contains each model's weights, learning statistics, pending
+Save version **5** contains each model's weights, learning statistics, pending
 inputs, reward components and the village training preference. The existing
 atomic writes, checksums and backup recovery remain. Save validation bounds
 weights, observations and statistics and rejects non-finite values or a
 mismatched network schema. Versions 1–3 load automatically with fresh neural
-models; their established world state is retained. Back up saves before upgrade;
-older binaries cannot read version 4.
+models; version 4 preserves its trained weights and pending experiences; their established world state is retained. Back up saves before upgrade;
+older binaries cannot read version 5.
 
 `make test` includes learned action-selection changes, successful/failed outcome
 discrimination, reward reversal/relearning, deterministic backpropagation, independent residents, live
@@ -102,3 +103,19 @@ and old-world migration. The 3,500-day population regression also runs with
 learning enabled. `--headless --steps 720000` reports total retained training
 updates, time and peak RSS. These checks do not establish handheld FPS or battery
 impact; measure those on the RG34XX SP's actual SDL backend.
+
+## Bounded experimentation and work practice
+
+Healthy adults (hunger <60, energy >=35, health >=80, shared food at least
+one per resident) can sample a candidate action type on one in eight decisions.
+That type gains eight utility points if a valid reachable candidate exists.
+Unavailable actions remain unavailable, and pressing pause training disables
+experimentation. The separate selected trial bonus and count appear on X's sixth
+page, alongside replay counts and actual work practice. Trials count selected
+bonus actions; a trial does not necessarily change the winning action.
+The agent's saved local RNG also chooses replay samples, so continuation is
+deterministic within the supported simulation/runtime.
+
+Practice adds up to six utility points for familiar work and creates changing
+occupation labels; see [society rules](society.md). An MLP bonus, practice bonus
+and experiment bonus remain subordinate to resource/location/action validity.

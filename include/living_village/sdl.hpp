@@ -17,6 +17,11 @@
     X(JoystickNumButtons) X(JoystickGetButton) X(JoystickGetAttached) X(JoystickGetGUID) X(JoystickGetGUIDString) \
     X(RenderReadPixels)
 
+#define VILLAGE_SDL_OPTIONAL(X) \
+    X(InitSubSystem) X(QuitSubSystem) X(OpenAudioDevice) X(CloseAudioDevice) X(PauseAudioDevice) \
+    X(QueueAudio) X(ClearQueuedAudio) X(GetQueuedAudioSize) X(GetCurrentAudioDriver) \
+    X(GameControllerRumble) X(JoystickRumble)
+
 namespace village {
 class SDLApi {
 public:
@@ -26,6 +31,7 @@ public:
     SDLApi& operator=(const SDLApi&) = delete;
 #define VILLAGE_DECLARE(name) decltype(&SDL_##name) name = nullptr;
     VILLAGE_SDL_FUNCTIONS(VILLAGE_DECLARE)
+    VILLAGE_SDL_OPTIONAL(VILLAGE_DECLARE)
 #undef VILLAGE_DECLARE
 private:
     void* library = nullptr;

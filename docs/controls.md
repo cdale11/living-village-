@@ -11,12 +11,12 @@ Run the launcher with `--diagnose-input` in a session where EmulationStation has
 Save, load, resume, speed and exit all have controller paths. No touch or mouse input is required. Desktop keyboard equivalents are in the README.
 
 A on the map examines the tile under the reticle. A on reachable empty grass
-opens the five construction recipes; D-pad up/down selects, A places the plan,
+opens the six construction recipes; D-pad up/down selects, A places the plan,
 and B cancels. A on a tree/bush/stone toggles a gathering designation. A on an
 existing building panel shows its costs, progress or completed gameplay effect.
-In the villager inspector, left/right cycles five pages: needs/reason, skills
-and personality, relationships and recent experiences, household and family, personal neural learning. Y opens the overview,
-where left/right selects village, population history or neural learning. A on village toggles
+In the villager inspector, left/right cycles six pages: needs/reason, skills
+and personality, relationships and recent experiences, household and family, personal neural learning, replay and practiced work. Y opens the overview,
+where left/right selects village, population history, neural learning, economy/history exports, or sound/vibration. A on village toggles
 autonomous new planning; A on population toggles births and arrivals;
 A on neural learning freezes/resumes model training. L1/R1 changes the inspected villager.
 
@@ -43,3 +43,7 @@ save-and-exit request. Use `--diagnose-input` if physical Fn is not recognized.
 Start → New village requires confirmation and archives the current village.
 Start → Switch to previous village swaps the two villages. Saves remain in
 `village.lvsave` and `previous-village.lvsave`, each with a backup.
+
+On Y's economy/history page, A exports CSV files to `saves/exports`.
+On Y's sound/vibration page, A cycles volume (including mute) and R1 toggles
+optional SDL rumble. These preferences persist with the village.

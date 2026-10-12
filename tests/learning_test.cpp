@@ -36,6 +36,7 @@ int main() {
         choices.tile(34, 32) = {Terrain::Bush, 6, 0}; choices.wood_stock = 3;
         check(choices.plan(BuildingKind::Farm, {31, 32}), "Learning choice fixture failed");
         auto& farm = choices.buildings.back(); farm.complete = true; farm.food = 12;
+        choices.learning_enabled = false;
         World untrained = choices; untrained.update();
         check(untrained.villagers[0].goal == Goal::TendFarm, "Baseline choice did not prefer its higher farm utility");
         const auto forage = choices.observations(chooser, Goal::Forage, {34, 32}, 55);
@@ -43,7 +44,7 @@ int main() {
         for (int n = 0; n < 1000; ++n) { chooser.brain.train(forage, .9); chooser.brain.train(harvest, -.9); }
         choices.update();
         check(chooser.goal == Goal::Forage && chooser.brain.selected_adjustment > 8, "Learned MLP values did not change the actual agent decision");
-        advance(choices, 100);
+        choices.learning_enabled = true; advance(choices, 100);
         check(chooser.brain.updates > 2000 && chooser.food > 0, "Live gathering outcomes did not train the model");
         World invalid_choice = choices; auto& child = invalid_choice.villagers[0];
         child.age = 0; child.food = 0; child.path.clear(); child.decision_timer = 0;
@@ -86,7 +87,7 @@ int main() {
         InputState press; press.pressed[static_cast<int>(Button::Confirm)] = true;
         check(ui.update(press, live, .033) == Request::ToggleLearning, "Controller could not toggle online learning");
         press = {}; press.x = -1; ui.view.panel = Panel::Inspector; ui.view.inspector_page = 0;
-        ui.update(press, live, .033); check(ui.view.inspector_page == 4, "Controller could not reach neural inspection");
+        ui.update(press, live, .033); check(ui.view.inspector_page == 5, "Controller could not reach neural inspection");
         std::cout << "PASS: MLP backpropagation, outcome discrimination/relearning, learned action changes, live independent learning, validity gates, freeze/resume, neural persistence/continuation, v3 migration, controller diagnostics\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << "FAIL: " << error.what() << '\n'; return 1; }
