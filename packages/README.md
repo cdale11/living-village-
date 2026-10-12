@@ -1,55 +1,54 @@
 # Ready-to-install ARM64 build
 
-`living-village-knulli-arm64.tar.gz` contains the native executable and KNULLI
-Ports launcher. Gameplay is built from source milestone **12c5d5e**, with
-diagnostic scripts/documentation from **12340f7**, using Zig 0.13.0,
-targeting Cortex-A53, AArch64 Linux, glibc 2.17+. All gameplay code is C++17.
+`living-village-knulli-arm64.tar.gz` contains the native C++17 executable,
+KNULLI Ports launcher, configuration, documentation and diagnostic script.
+Gameplay is built from source milestone **2510994**, using Zig 0.13.0 for
+Cortex-A53 / AArch64 Linux with a glibc 2.17 baseline.
 
-Download the archive using GitHub's **Download raw file**, then extract into
+Download the archive using GitHub's **Download raw file**, extract into
 `/userdata/roms/ports/`, make `LivingVillage.sh` and
-`livingvillage/bin/living-village` executable, and refresh EmulationStation's
-game lists. Launch **Ports → LivingVillage**.
+`livingvillage/bin/living-village` executable, then refresh EmulationStation's
+game lists. Open **Ports → LivingVillage**. See the root [README](../README.md).
 
-From the repository root, verify archive integrity with:
+This release adds:
+
+- Rabbits, deer, foxes and bee colonies with biological needs, inherited traits,
+  pregnancy, growth, disease, mortality and individual online MLP learning.
+- Soil moisture/nutrients, finite nectar, grazing, pollination, seed dispersal,
+  canopy competition, forest recruitment, litter and plant mortality.
+- Daily weather, snowmelt, groundwater, conservative runoff, floods, drought and fire.
+- Terrain erosion, worn paths and building condition; villagers physically
+  deliver materials and perform maintenance work.
+- Ecology/weather and wildlife inspection, map effects, ecology/wildlife CSV exports.
+- Version 7 saves with version 1–6 migration and preserved resident neural state.
+
+Existing world creation/save management, households, adaptive work, society,
+technology, audio and optional rumble remain. Fn+Start saves and exits from
+all panels. The package also includes `scripts/diagnose_knulli.sh` for system,
+CPU, graphics and input reports in `logs/`, using temporary worlds.
+
+Desktop ecology tests, water accounting, biological/maintenance tests, migration,
+maximum save budgets, neural learning, save continuation, controller/rendering,
+first-boot/CLI smoke tests, sanitizer checks and 40 ten-day biome/layout surveys
+pass. The 3,500-day regression ended with 20 residents, 26 arrivals, 16 deaths
+and 2,210 repairs, replacing the founding generation. Routine maintenance uses
+renewable wood; severe structural damage also requires stone. The SDK runtime passes ecology, world management and 300-day survival checks.
+A short desktop 20-resident/wildlife rendering test measured 30.19 FPS at the
+30 FPS cap; this is not a physical handheld result. The ARM64 ELF and glibc symbol
+baseline have been inspected. The user confirmed the original game launches on
+KNULLI; **this ecology build still requires physical validation**.
+
+Verify the archive from the repository root:
 
 ```sh
 sha256sum -c packages/SHA256SUMS
 ```
 
-Desktop simulation and SDL input/rendering tests pass. The binary's ARM64
-architecture and glibc symbol baseline have been inspected. The user confirmed
-the initial release runs on KNULLI. This update adds **world creation and save management**:
-- first-run/controller naming and full unsigned 32-bit seed editing;
-- four real biomes and five geographical layouts, including island shore arrivals;
-- up to 32 independent named worlds, last-world resume and legacy slot access;
-- load, rename, snapshot copies and confirmed deletion of inactive saves;
-- backup-only recovery, corrupt-startup protection and retained exports;
-- persistent generation/name settings with version 1–5 migration.
+For an upgrade, back up the **whole saves folder**, then replace the executable
+and optionally update documentation/scripts. Preserve customized `config/` and
+all save files, nested worlds, backups, markers and exports. Versions 1–6 load
+and upgrade to 7; older binaries cannot read newly upgraded saves.
 
-All previous adaptive-learning, society, economy, workshop, audio/rumble and
-performance features remain. **Fn+Start save-and-exit works from management
-and editor panels.** Controller/rendering, all 20 generation combinations,
-file-management/migration tests, sanitizer checks, first-boot/CLI smoke tests
-and the 3,500-day simulation regressions pass on desktop with GCC and the SDK
-runtime. The ARM64 binary is cross compiled; this expanded build still needs
-physical button/display/performance validation on the handheld.
-See the root [README](../README.md) and [device guide](../docs/knulli.md).
-
-The archive now includes `livingvillage/scripts/diagnose_knulli.sh` for system,
-CPU, graphics and input reports in `logs/`. These measurements use temporary
-worlds and leave player saves untouched. All 40 two-seed biome/layout desktop
-surveys completed 100 days with 15–19 survivors; this is not a device benchmark.
-Copy the new `scripts/` directory as well when upgrading just the executable.
-
-To upgrade an existing installation, replace only
-`/userdata/roms/ports/livingvillage/bin/living-village` with the executable in
-this archive and ensure it remains executable. Keep your saves and config.
-Version 1–5 saves load and upgrade automatically to version 6; older binaries
-cannot read newly upgraded saves. A examines tiles/plans and gathering areas,
-X opens the villager inspector (left/right for family/MLP/details), and Y opens
-the overview (left/right for population/history/learning/exports/sound; A toggles
-settings or exports CSV; R1 on the sound page toggles rumble).
-Back up the whole saves folder before upgrading. Keep all its nested worlds,
-backups, active/counter markers and exports. Start → New village selects
-name/seed/biome/layout; Start → Manage saved worlds loads, renames, snapshots
-and confirms inactive deletion. The first run waits for world configuration.
+Y → left/right reaches Ecology/weather and Wildlife after the sound page.
+L1/R1 cycles animals on Wildlife. A inspects soil/plant state or building
+condition. [Ecology documentation](../docs/ecology.md) describes rules and limits.
