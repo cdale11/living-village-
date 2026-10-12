@@ -36,7 +36,9 @@ void World::cycle_director() {
 }
 void World::update_director() {
     auto& d = director;
-    if (d.mode == DirectorMode::Off || !ecology_enabled) { d.bias = 0; return; }
+    if (d.mode == DirectorMode::Off || !ecology_enabled) {
+        d.bias = 0; d.pending = false; d.brain.active = false; return;
+    }
     const auto s = snapshot(*this);
     if (d.pending && ticks - d.pending_tick < 7200) { d.bias = 0; return; }
     if (d.pending) {
@@ -65,13 +67,17 @@ void World::update_director() {
         input[a] = 0;
     }
     // Rare, safe experiments use only the director's saved PRNG.
+    bool experimenting = false;
     if (d.mode == DirectorMode::Adaptive && learning_enabled && safe) {
         const int experiment = d.brain.exploration(true);
-        if (experiment >= 0) { chosen = experiment % 3; ++d.brain.experiments; }
+        if (experiment >= 0) { chosen = experiment % 3; experimenting = true; ++d.brain.experiments; }
     }
     d.action = chosen; input[chosen] = 1;
     d.expected = d.brain.predict(input); ++d.decisions;
-    d.reason = !safe ? "Low reserves or welfare: recovery safeguard" : chosen == 1 ? "Dry habitat; bounded wet opportunity" : chosen == 2 ? "Wet habitat; bounded dry opportunity" : "Observe autonomous development";
+    d.reason = !safe ? "Low reserves or welfare: recovery safeguard"
+        : experimenting ? "Safe experiment; outcome not yet known"
+        : chosen == 0 ? "Observe autonomous development"
+        : "Soil water " + std::to_string(static_cast<int>(s.moisture * 100)) + "%; contextual score favors opportunity";
     d.bias = 0;
     if (d.mode == DirectorMode::Adaptive) {
         d.bias = chosen == 1 ? 8 : chosen == 2 ? -8 : 0;
