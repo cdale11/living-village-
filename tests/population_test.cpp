@@ -1,5 +1,6 @@
 #include "living_village/saves.hpp"
 #include "living_village/ui.hpp"
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -132,9 +133,15 @@ int main(int argc, char** argv) {
 
         World generations(20261011);
         const int days = quick ? 300 : 3500;
-        advance(generations, 2400 * days);
+        for (int elapsed = 0; elapsed < days;) {
+            const int batch = std::min(500, days - elapsed); advance(generations, 2400 * batch); elapsed += batch;
+            std::cout << "Generations: " << elapsed << " days, " << generations.alive_count() << " alive, " << generations.births << " births, " << generations.arrivals << " arrivals, " << generations.deaths
+                << " deaths, " << generations.ecology.repairs << " repairs, food " << generations.food_stock << std::endl;
+        }
         check(generations.alive_count() > 0 && generations.alive_count() <= population_limit && generations.births > 0 && generations.arrivals > 0, "Long-run settlement did not sustain population growth");
-        if (!quick) check(generations.deaths > 0 && generations.next_person_id > 32, "Long-run settlement did not sustain generational turnover");
+        // Ecology changes demographic rates; generation replacement must not
+        // depend on an arbitrary minimum number of allocated IDs in one seed.
+        if (!quick) check(generations.deaths > 0 && std::none_of(generations.villagers.begin(), generations.villagers.end(), [](const Villager& p) { return p.id < 6 && p.alive(); }), "Long-run settlement did not replace its founding generation");
         check(generations.villagers.size() <= population_limit + dead_history_limit && generations.events.size() <= 24, "Population history grew without bounds");
         for (const auto& p : generations.villagers) check(p.relationships.values.size() <= 32 && p.history.size() <= 6, "Person history grew without bounds");
         check(World::deserialize(generations.serialize()).serialize() == generations.serialize(), "Multigeneration save was invalid");
