@@ -317,7 +317,7 @@ void Renderer::draw(const World& world, const View& view) {
     text(492, 8, std::to_string(view.speed) + "X", cream);
     text(555, 8, view.simulation_running() ? "RUNNING" : "PAUSED", cream);
     text(12, 32, "FOOD " + std::to_string(world.food_stock) + "/" + std::to_string(world.food_capacity()) +
-         "  WOOD " + std::to_string(world.wood_stock) + "  STONE " + std::to_string(world.stone_stock), muted);
+         "  W " + std::to_string(world.wood_stock) + "  S " + std::to_string(world.stone_stock), muted);
     text(384,32,std::string(world.season_name()) + " " + world.weather_name(),muted,1);
     text(480,32,"WILD " + std::to_string(world.animals.size()),cream,1);
     text(554,32,"CPU " + (view.cpu_percent < 0 ? std::string("--") : std::to_string(static_cast<int>(view.cpu_percent)) + "%"),muted,1);

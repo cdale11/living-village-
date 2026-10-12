@@ -45,7 +45,8 @@ speaker and motor validation remains necessary.
 
 ## Small CPU/RAM meters
 
-The right side of the top resource bar shows **CPU** and **RAM**. Sampling happens
+The top resource bar abbreviates wood as **W** and stone as **S** so larger
+stocks leave room for telemetry. The right side shows **CPU** and **RAM**. Sampling happens
 once per real second, including while simulation is paused. CPU measures game
 process CPU time (user + kernel), with 100% representing one fully occupied CPU
 core; multithreaded usage can exceed 100%, while its small bar saturates at 100%.
