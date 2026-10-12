@@ -58,8 +58,9 @@ int main(int argc, char** argv) {
             const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
             struct rusage usage{}; getrusage(RUSAGE_SELF, &usage);
             int survivors = 0; for (const auto& p : world.villagers) if (p.alive()) ++survivors;
+            int built = 0; for (const auto& b : world.buildings) if (b.complete) ++built;
             std::cout << "Headless: " << config.steps << " steps, day " << world.day() << ", " << survivors
-                      << " alive, " << seconds << " CPU wall seconds, peak RSS " << usage.ru_maxrss << " KiB\n";
+                      << " alive, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, peak RSS " << usage.ru_maxrss << " KiB\n";
             return 0;
         }
         const auto save_path = std::filesystem::path(config.save_dir) / "village.lvsave";
@@ -69,6 +70,7 @@ int main(int argc, char** argv) {
             world = load_save(save_path, &backup);
             ui.view.status = backup ? "Recovered previous save" : "Village loaded";
         }
+        ui.view.speed = world.simulation_speed;
         std::signal(SIGINT, signal_stop); std::signal(SIGTERM, signal_stop); std::signal(SIGHUP, signal_stop);
         SDLApi sdl;
         sdl.SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
@@ -116,11 +118,22 @@ int main(int argc, char** argv) {
                 input.handle(event);
             }
             const auto request = ui.update(input.poll(), world, elapsed);
+            world.simulation_speed = ui.view.speed;
             if (request == Request::Save) save();
             else if (request == Request::Load) {
-                try { world = load_save(save_path); ui.view.status = "Village loaded"; accumulator = 0; }
+                try { world = load_save(save_path); ui.view.speed = world.simulation_speed; ui.view.status = "Village loaded"; accumulator = 0; }
                 catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "LOAD FAILED - CHECK LOG"; }
             } else if (request == Request::Exit) { if (save()) running = false; }
+            else if (request == Request::Plan) {
+                if (world.plan(static_cast<BuildingKind>(ui.view.menu_index), ui.view.selected_tile)) {
+                    ui.view.status = "Plan placed - villagers supply and build it"; ui.view.panel = Panel::Map;
+                } else ui.view.status = "Plan needs reachable empty grass";
+            } else if (request == Request::ToggleDevelopment) {
+                world.auto_develop = !world.auto_develop;
+                ui.view.status = world.auto_develop ? "Autonomous development enabled" : "Only player construction plans enabled";
+            } else if (request == Request::Designate) {
+                ui.view.status = world.designate(ui.view.selected_tile) ? "Gathering area updated" : "Choose a tree, bush or stone - max 16 areas";
+            }
             if (ui.view.panel == Panel::Map) {
                 accumulator += elapsed * ui.view.speed;
                 int steps = 0;

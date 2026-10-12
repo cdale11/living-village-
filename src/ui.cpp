@@ -16,7 +16,7 @@ Request Interface::update(const InputState& input, const World& world, double el
     view.selected = std::clamp(view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
     if (input.hit(Button::Menu)) { view.panel = view.panel == Panel::Map ? Panel::Menu : Panel::Map; view.menu_index = 0; }
     else if (input.hit(Button::Back)) {
-        view.panel = view.panel == Panel::Controls ? Panel::Menu : Panel::Map;
+        view.panel = view.panel == Panel::Controls ? Panel::Menu : view.panel == Panel::Build ? Panel::Tile : Panel::Map;
         view.menu_index = 0;
     } else if (input.hit(Button::Speed)) {
         view.panel = Panel::Speed; view.menu_index = view.speed == 1 ? 0 : view.speed == 2 ? 1 : 2;
@@ -28,10 +28,16 @@ Request Interface::update(const InputState& input, const World& world, double el
     if (input.hit(Button::ZoomIn)) view.tile_size = std::min(48, view.tile_size + 4);
     repeat -= elapsed;
     if (std::abs(input.y) < .5) repeat = 0;
-    if ((view.panel == Panel::Menu || view.panel == Panel::Speed) && std::abs(input.y) >= .5 && repeat <= 0) {
-        const int count = view.panel == Panel::Menu ? 5 : 3;
+    if ((view.panel == Panel::Menu || view.panel == Panel::Speed || view.panel == Panel::Build) && std::abs(input.y) >= .5 && repeat <= 0) {
+        const int count = view.panel == Panel::Speed ? 3 : 5;
         view.menu_index = (view.menu_index + count + (input.y > 0 ? 1 : -1)) % count;
         repeat = .2;
+    }
+    page_repeat -= elapsed;
+    if (std::abs(input.x) < .5) page_repeat = 0;
+    if (view.panel == Panel::Inspector && std::abs(input.x) >= .5 && page_repeat <= 0) {
+        view.inspector_page = (view.inspector_page + 3 + (input.x > 0 ? 1 : -1)) % 3;
+        page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
         if (std::abs(input.x) > .05 || std::abs(input.y) > .05) view.follow = false;
@@ -56,14 +62,12 @@ Request Interface::update(const InputState& input, const World& world, double el
         } else if (view.panel == Panel::Speed) {
             view.speed = 1 << view.menu_index; view.panel = Panel::Map;
         } else if (view.panel == Panel::Map) {
-            double closest = std::numeric_limits<double>::max();
-            for (std::size_t i = 0; i < world.villagers.size(); ++i) {
-                const auto& p = world.villagers[i];
-                double distance = std::hypot(p.x - view.camera_x, p.y - view.camera_y);
-                if (distance < closest) { closest = distance; view.selected = static_cast<int>(i); }
-            }
-            view.panel = Panel::Inspector;
-        }
+            view.selected_tile = {static_cast<int>(std::round(view.camera_x)), static_cast<int>(std::round(view.camera_y))};
+            view.panel = Panel::Tile;
+        } else if (view.panel == Panel::Tile && world.can_plan(view.selected_tile)) { view.panel = Panel::Build; view.menu_index = 0; }
+        else if (view.panel == Panel::Tile && world.building_at(view.selected_tile) < 0) return Request::Designate;
+        else if (view.panel == Panel::Build) return Request::Plan;
+        else if (view.panel == Panel::Overview) return Request::ToggleDevelopment;
     }
     return Request::None;
 }

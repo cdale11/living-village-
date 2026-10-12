@@ -75,7 +75,7 @@ int main() {
         check(menu.update(press, world, .033) == Request::Save, "Controller save menu did not activate");
         menu.view.panel = Panel::Menu; menu.view.menu_index = 4;
         check(menu.update(press, world, .033) == Request::Exit, "Controller exit did not activate");
-        for (Panel panel : {Panel::Map, Panel::Menu, Panel::Inspector, Panel::Overview, Panel::Speed, Panel::Controls}) {
+        for (Panel panel : {Panel::Map, Panel::Menu, Panel::Inspector, Panel::Overview, Panel::Speed, Panel::Controls, Panel::Tile, Panel::Build}) {
             menu.view.panel = panel;
             press = {}; press.exit_requested = true;
             press.pressed[static_cast<int>(Button::Menu)] = true;

@@ -7,8 +7,8 @@ The script derives its install location, enters `livingvillage/`, creates save/l
 ## Physical device checks still required
 
 The user confirmed the initial ARM64 package runs on KNULLI. The updated
-Fn+Start shortcut is verified through desktop SDL virtual input; physical
-confirmation of that shortcut is still pending.
+village-development milestone and Fn+Start shortcut are tested on desktop;
+this expanded build still requires physical device confirmation.
 
 Inspect runtime facts over SSH:
 
@@ -19,7 +19,7 @@ ls -l /lib/ld-linux-aarch64.so.1
 ls /usr/lib/libSDL2* /lib/libSDL2* 2>/dev/null
 ```
 
-Launch from Ports, then read `livingvillage/logs/game.log`. Startup reports selected/available SDL video backends, renderer and controller name/GUID/mapping mode. Validate movement, every button, zoom, speed, pause, save/load, exit and lid reopening.
+Launch from Ports, then read `livingvillage/logs/game.log`. Startup reports selected/available SDL video backends, renderer and controller name/GUID/mapping mode. Validate movement, every button, zoom, speed, pause, save/load, Fn+Start exit and lid reopening. Check A tile/building plans and gathering areas, X inspector detail pages, and Y autonomous-planning toggle. Keep existing saves; they migrate automatically to version 2.
 
 If video initialization fails, use the error/backend list to choose an override. Do not assume X11. **Only if KMSDRM is available and appropriate for this firmware**, put this in `config/platform.env`:
 

@@ -35,27 +35,37 @@ ssh root@DEVICE_IP 'tar -xzf /userdata/living-village-knulli-arm64.tar.gz -C /us
 
 All files and saves stay on `/userdata`; installation does not modify the system partition. On upgrades, replace the launcher and `bin/`, preserving your `saves/` and customized `config/`. The archive contains empty save/log directories, with no save file.
 
-The user confirmed that the initial ARM64 release runs on their KNULLI handheld. The Fn+Start fix has been tested with SDL virtual controllers and still needs confirmation on the physical device. Lid behavior and frame rate measurements remain pending. See [device checks](docs/knulli.md).
+The user confirmed the initial ARM64 release runs on KNULLI. This village-development update is cross compiled and tested on desktop, and still needs physical validation on the handheld. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
 
 ## What you can play
 
 - Explore a seeded 64×64 world with grass, trees, berry bushes, stone and ponds.
-- Observe six named villagers independently exploring, gathering berries, eating and resting.
-- Inspect actual goals, needs, resource memories and decision reasons.
+- Observe six named villagers gathering food, wood and stone, building, farming, eating, resting and socializing.
+- Watch shared needs produce real construction plans, material deliveries and cooperative work.
+- Plan shelters, food storage, stockpiles, farm plots and campfires; designate gathering areas.
+- Inspect actual goals, utility scores, needs, skills, relationships and recent experiences.
 - Pan and zoom; cycle villagers; view the event log.
 - Pause through controller menus and choose 1×, 2× or 4× speed.
 - Save, load and resume. Autosaves run every 30 real seconds.
 
-This is the first playable C++ release, with basic survival added to Milestone A. Construction, farming, wood/stone gathering, relationships, weather effects, births, audio and rumble remain future milestones. The camp provides shared food access and improved rest; berries regenerate. There is no offline progression.
+This release implements village development (Milestone C) on top of survival, controller menus and persistent saves. Buildings consume delivered resources and work; farms renew food, shelters improve rest, and storage expands capacity. Seasonal/rain effects change resource growth. Births, families, trade, advanced occupations, audio and rumble remain future milestones. There is no offline progression.
+
+To upgrade, replace only `livingvillage/bin/living-village` and keep saves/config. Version 1 saves load and upgrade automatically; version 2 saves preserve buildings, skills, relationships and player designations. Older binaries cannot read version 2 saves.
+
+## Planning and inspecting
+
+Move the camera reticle to a tile and press **A**. On empty grass, press A again to choose a building, then A to place the plan. Villagers gather and physically deliver the required materials before building. On a tree, bush or stone tile, A toggles a 5×5 gathering area; survival and competing village needs still affect their choices.
+
+**X** inspects the selected villager; left/right on the D-pad cycles needs/reasons, skills/personality, and relationships/experiences. **L1/R1** switches villagers and follows them. **Y** opens the village overview; A there toggles autonomous new construction plans. Existing plans still receive work when automatic planning is disabled. Trees display stumps when depleted, and construction tiles show work progress.
 
 ## Handheld controls
 
 | Input | Action |
 | --- | --- |
 | D-pad / left stick | Pan camera / navigate menu |
-| A | Select nearest villager / confirm |
+| A | Inspect tile / plan building or gathering area / confirm |
 | B | Close panel / back |
-| X | Inspect selected villager |
+| X | Inspect villager; D-pad left/right changes detail page |
 | Y | Village overview / event log |
 | L1 / R1 | Previous / next villager; follow camera |
 | L2 / R2 | Zoom out / in |
@@ -82,7 +92,7 @@ make render-test                 # dummy display, no desktop required
 ./build/living-village --headless --steps 720000
 ```
 
-The headless command advances 300 days and reports time and peak RSS, making no save writes. Normal play defaults to `./saves`; use `--save-dir PATH` to change it. `--new` starts over and replaces the current save on the next save, retaining the old one as backup. `--no-save` disables loading/writing for temporary sessions. See `--help` for diagnostics.
+The headless command advances 300 days and reports survivors, buildings, time and peak RSS, making no save writes. Normal play defaults to `./saves`; use `--save-dir PATH` to change it. `--new` starts over and replaces the current save on the next save, retaining the old one as backup. `--no-save` disables loading/writing for temporary sessions. See `--help` for diagnostics.
 
 ## ARM64 package build
 
@@ -97,9 +107,9 @@ Output: `dist/living-village-knulli-arm64.tar.gz`. Targets Cortex-A53, AArch64 L
 
 ## Persistence and verification
 
-A versioned text save with checksum records random generator, terrain/resources, time, inventories, goals, paths, known resources and events. Writes use `fsync`, same-directory rename, directory flush and a validated `.bak` previous save. Corrupt saves fall back to backup. SIGINT/SIGTERM/SIGHUP request clean save/exit; focus/background events save and pause. SIGKILL or power loss can lose progress since the latest autosave.
+A versioned text save with checksum records random generator, terrain/resources, time, buildings/progress/invested materials, crops/fuel, inventories, skills, relationships, experiences, goals/paths/memories, designations, simulation settings and events. Writes use `fsync`, same-directory rename, directory flush and a validated `.bak` previous save. Corrupt saves fall back to backup. SIGINT/SIGTERM/SIGHUP request clean save/exit; focus/background events save and pause. SIGKILL or power loss can lose progress since the latest autosave.
 
-Verified on x86 Linux: C++ build, SDL dummy/software rendering, virtual controller mapping, deterministic save continuation, corruption recovery, food accounting, obstacle routing, shortage collapse and 300 days with six survivors. A desktop headless benchmark ran 720,000 steps in about 3.7 seconds with about 1.7 MiB peak RSS. These are **not handheld performance results**.
+Verified on x86 Linux: C++ build, SDL dummy/software rendering, virtual controller/Fn+Start mapping, deterministic save continuation, corruption recovery, old-save migration, resource budgets, physical cooperative delivery, material-gated construction, farm/shelter/storage effects, seasons, gathering designations, 20 active villagers and 300 days with six survivors. A desktop headless benchmark ran 720,000 steps in about 2.6 seconds with about 5.6 MiB peak RSS. These are **not handheld performance results**.
 
 [Architecture](docs/architecture.md) · [Simulation rules](docs/simulation-design.md) · [KNULLI checks](docs/knulli.md)
 

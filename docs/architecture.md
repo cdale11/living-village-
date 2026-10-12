@@ -1,13 +1,36 @@
 # Architecture
 
-`World` and its villagers are C++ data with no SDL dependency. `world.cpp` contains bounded pathfinding, resource discovery, utility decisions, movement, need changes and ecology. `saves.cpp` serializes the complete state including the PRNG. The headless command and simulation tests use this same simulation.
+`World` and all villagers/buildings are C++ data without SDL dependencies.
+`world.cpp` contains resource discovery, utility decisions, action execution,
+movement, needs, relationships and ecology. `buildings.cpp` contains building
+recipes, capacity/effect queries, placement validation and shared need-driven
+planning. `saves.cpp` records full state and migrates version 1 saves to version
+2. Headless runs and tests use the same simulation as the graphical game.
 
-`main.cpp` owns SDL and feeds simulation steps of 0.1 seconds. Rendering is capped at approximately 30 FPS. Speed 4× advances four times as many simulation steps. Frame stalls are bounded to 0.2 seconds and eight simulation updates per frame, preventing runaway catch-up. Paused panels advance no simulation time.
+`main.cpp` feeds fixed 0.1-second steps. Rendering targets 30 FPS. Speed 4×
+advances four times as many steps. Stalls are bounded to 0.2 seconds and at most
+eight updates per frame, avoiding unlimited catch-up. UI panels pause the
+simulation. Simulation speed and autonomous planning preference are saved.
 
-`input.cpp` reads mapped SDL controllers, raw joysticks and keyboard state. `ui.cpp` translates presses into camera changes, menus and save/load/exit requests. Edge detection prevents held buttons from repeatedly activating actions; menu direction input has a repeat interval. One joystick is selected; reconnection is handled.
+`input.cpp` reads mapped SDL controllers, raw joysticks and keyboard state,
+including Fn+Start exit. `ui.cpp` controls camera, menu and inspection pages and
+returns save/load/exit/plan/designation requests. Building requests alter
+simulation state in `main.cpp`; UI does not bypass material or work costs.
+Directional menus repeat at a bounded rate, while action buttons use edges.
 
-`render.cpp` draws visible terrain, original rectangle-based sprites, bitmap text and controller panels at logical 720×480 without external fonts or textures. `sdl.cpp` loads SDL2 dynamically so the ARM cross build can use upstream headers without shipping a desktop SDL build. Missing symbols produce a log error. Stable SDL2 functions are used by the game; virtual joystick functions are used only by desktop tests.
+`render.cpp` draws visible terrain, original sprites, buildings, construction
+progress, designation borders, bitmap lettering and panels at logical 720×480.
+No external art/font library is required. `sdl.cpp` loads the OS SDL2 ABI, so
+ARM builds do not ship incompatible desktop video drivers. The library is not
+loaded for headless commands. Virtual joystick functions are test-only.
 
-The map is a 4096-tile array. BFS visits each tile at most once using bounded arrays. Resource memory is limited to 48 locations per villager and history to 24 events. Save reads are capped at 2 MiB. Saves permit up to 20 villagers, but this release spawns six and has no population growth. There is no game networking.
+The map is a 4096-tile array. BFS visits each cell once with bounded arrays.
+Movement traverses at most four path edges per update. Memory is capped at 48
+locations per resource per agent, history at six experiences per agent and 24
+shared events. Plans/buildings cap at 64 and gathering areas at 16. Save reads
+cap at 2 MiB; population data caps at 20. The default population remains six;
+20-agent regression scenarios verify initial scalability without adding births.
 
-Platform initialization and paths stay in the launcher. No OS package installs are performed. ROCKNIX still needs validation and its own installation-path adapter.
+Platform paths/optional SDL overrides stay in the Ports launcher. All handheld
+writes stay on /userdata; no OS package installs occur. ROCKNIX still needs a
+validated platform adapter. There is no game networking.

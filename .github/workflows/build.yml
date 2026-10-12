@@ -18,6 +18,7 @@ jobs:
           version: 0.13.0
       - name: Cross compile ARM64 and package KNULLI
         run: |
+          make BUILD=build-libcxx CXX='zig c++ -target x86_64-linux-gnu.2.17' test
           ./scripts/build_arm64.sh
           ./scripts/package_knulli.sh
       - uses: actions/upload-artifact@v4

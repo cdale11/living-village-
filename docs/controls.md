@@ -10,6 +10,14 @@ Run the launcher with `--diagnose-input` in a session where EmulationStation has
 
 Save, load, resume, speed and exit all have controller paths. No touch or mouse input is required. Desktop keyboard equivalents are in the README.
 
+A on the map examines the tile under the reticle. A on reachable empty grass
+opens the five construction recipes; D-pad up/down selects, A places the plan,
+and B cancels. A on a tree/bush/stone toggles a gathering designation. A on an
+existing building panel shows its costs, progress or completed gameplay effect.
+In the villager inspector, left/right cycles three pages: needs/reason, skills
+and personality, relationships and recent experiences. Y opens the overview,
+where A toggles autonomous new planning. L1/R1 changes the inspected villager.
+
 ## Fn+Start exit
 
 Hold Fn and press Start to save and return to EmulationStation from any panel.
