@@ -107,7 +107,11 @@ void Renderer::draw(const World& world, const View& view) {
             const int sx = px(x), sy = py(y), unit = std::max(1, size / 8);
             const Uint8 shade = static_cast<Uint8>(108 + ((x * 17 + y * 31 + world.seed) % 3) * 5);
             const SDL_Color meadow[] = {{70, shade, 65, 255}, {76, static_cast<Uint8>(shade + 8), 60, 255}, {110, shade, 62, 255}, {140, 157, 151, 255}};
-            rect(sx, sy, size + 1, size + 1, meadow[world.season()]);
+            auto ground = meadow[world.season()];
+            if (world.biome == Biome::Arid) ground = {171, static_cast<Uint8>(142 + shade % 12), 87, 255};
+            else if (world.biome == Biome::Woodland) { ground.r = static_cast<Uint8>(ground.r * .85); ground.g = static_cast<Uint8>(ground.g * .9); }
+            else if (world.biome == Biome::Meadow) ground.g = static_cast<Uint8>(std::min(190, ground.g + 12));
+            rect(sx, sy, size + 1, size + 1, ground);
             rect(sx + unit, sy + size - unit * 2, unit, unit, {91, 138, 77, 255});
             switch (tile.terrain) {
                 case Terrain::Tree:
@@ -252,7 +256,7 @@ void Renderer::draw(const World& world, const View& view) {
         switch (view.panel) {
             case Panel::Menu: {
                 text(102, 80, "VILLAGE MENU", cream, 3);
-                const char* entries[] = {"Resume", "Save village", "Load village", "Controls", "Save and exit", "New village", "Switch previous village"};
+                const char* entries[] = {"Resume", "Save village", "Load village", "Controls", "Save and exit", "New village", "Manage saved worlds"};
                 for (int i = 0; i < 7; ++i) {
                     if (view.menu_index == i) rect(96, 122 + i * 32, 528, 28, {63, 89, 73, 255});
                     text(112, 130 + i * 32, std::string(view.menu_index == i ? "> " : "  ") + entries[i], cream);
@@ -342,10 +346,12 @@ void Renderer::draw(const World& world, const View& view) {
                 text(102, 80, view.overview_page == 0 ? "VILLAGE LIFE" : view.overview_page == 1 ? "POPULATION" : view.overview_page == 2 ? "VILLAGE HISTORY" : view.overview_page == 3 ? "NEURAL LEARNING" : view.overview_page == 4 ? "ECONOMY / HISTORY" : "SOUND / VIBRATION", cream, 3);
                 if (view.overview_page == 0) {
                     int finished = 0; for (const auto& b : world.buildings) if (b.complete) ++finished;
-                    text(102, 126, "Built " + std::to_string(finished) + " | Plans " + std::to_string(world.buildings.size() - finished), muted);
-                    text(102, 164, "Residents " + std::to_string(world.alive_count()) + " | Beds " + std::to_string(world.shelter_capacity()), cream);
-                    text(102, 208, "A: AUTO PLANS " + std::string(world.auto_develop ? "ON" : "OFF"), cream);
-                    text(102, 256, "Left/right: population, log and learning", muted, 2, 504);
+                    text(102, 122, world.world_name, cream);
+                    text(102, 156, "Built " + std::to_string(finished) + " | Plans " + std::to_string(world.buildings.size() - finished), muted);
+                    text(102, 190, "Residents " + std::to_string(world.alive_count()) + " | Beds " + std::to_string(world.shelter_capacity()), cream);
+                    text(102, 224, "A: AUTO PLANS " + std::string(world.auto_develop ? "ON" : "OFF"), cream);
+                    text(102, 268, "Seed " + std::to_string(world.seed), muted);
+                    text(102, 302, std::string(biome_name(world.biome)) + " / " + geography_name(world.geography), muted);
                 } else if (view.overview_page == 1) {
                     text(102, 126, "Adults " + std::to_string(world.alive_count() - world.child_count()) + " | Children " + std::to_string(world.child_count()), cream);
                     text(102, 164, "Births " + std::to_string(world.births) + " | Arrivals " + std::to_string(world.arrivals), cream);
@@ -376,11 +382,58 @@ void Renderer::draw(const World& world, const View& view) {
                 }
                 text(102, 366, "LEFT/RIGHT PAGES   B BACK", muted); break;
             }
-            case Panel::NewVillage:
-                text(102, 80, "START A NEW VILLAGE", cream, 3);
-                text(102, 144, "Your current village is kept in the previous-village save slot.", cream, 2, 504);
-                text(102, 222, "You can switch back from the menu.", muted, 2, 504);
-                text(102, 314, "A START FRESH   B CANCEL", cream); break;
+            case Panel::NewVillage: {
+                text(102, 80, "CREATE WORLD", cream, 3);
+                const std::string rows[] = {"Name: " + view.draft_name, "Seed: " + std::to_string(view.draft_seed), std::string("Biome: ") + biome_name(view.draft_biome), std::string("Layout: ") + geography_name(view.draft_geography), "Create this world", "Browse saved worlds"};
+                for (int i = 0; i < 6; ++i) {
+                    if (view.menu_index == i) rect(96, 122 + i * 36, 528, 30, {63, 89, 73, 255});
+                    text(112, 130 + i * 36, rows[i], cream);
+                }
+                text(102, 366, "A EDIT/SELECT  X RANDOM SEED  B BACK", muted); break;
+            }
+            case Panel::SeedEdit: case Panel::NameEdit: {
+                const bool seed = view.panel == Panel::SeedEdit;
+                text(102, 80, seed ? "EDIT WORLD SEED" : "EDIT WORLD NAME", cream, 3);
+                text(102, 126, "LEFT/RIGHT MOVE  UP/DOWN CHANGE", muted);
+                for (std::size_t i = 0; i < view.edit_buffer.size(); ++i) {
+                    if (static_cast<int>(i) == view.edit_cursor) rect(100 + static_cast<int>(i) * 18, 164, 18, 28, {63, 89, 73, 255});
+                    text(102 + static_cast<int>(i) * 18, 170, std::string(1, view.edit_buffer[i]), cream, 3);
+                }
+                text(102, 234, seed ? "Range: 0 to 4294967295" : "Letters, numbers, spaces and hyphens", muted);
+                text(102, 282, seed ? "X: RANDOM SEED" : "X: CLEAR SELECTED CHARACTER", muted);
+                text(102, 366, "A ACCEPT  B CANCEL", muted); break;
+            }
+            case Panel::ConfirmCreate:
+                text(102, 80, "CREATE THIS WORLD", cream, 3);
+                text(102, 136, view.draft_name, cream);
+                text(102, 172, "Seed " + std::to_string(view.draft_seed), muted);
+                text(102, 208, std::string(biome_name(view.draft_biome)) + " / " + geography_name(view.draft_geography), cream);
+                text(102, 260, "Your current world is saved separately. You can switch back from Manage saved worlds.", muted, 2, 504);
+                text(102, 366, "A CREATE  B CANCEL", cream); break;
+            case Panel::Saves: {
+                text(102, 80, "SAVED WORLDS", cream, 3);
+                text(442, 84, std::to_string(view.saves.size()) + " SAVES", muted);
+                if (view.saves.empty()) { text(102, 152, "No saved worlds", cream); text(102, 208, "A: CREATE A WORLD", muted); }
+                const int first = (view.menu_index / 4) * 4;
+                for (int row = 0; row < 4 && first + row < static_cast<int>(view.saves.size()); ++row) {
+                    const int index = first + row; const auto& slot = view.saves[index];
+                    if (view.menu_index == index) rect(96, 120 + row * 48, 528, 44, {63, 89, 73, 255});
+                    text(112, 126 + row * 48, (slot.id == view.active_slot && view.has_world ? "OPEN: " : "") + slot.name, cream);
+                    text(112, 146 + row * 48, slot.metadata ? "Day " + std::to_string(slot.day) + " | Seed " + std::to_string(slot.seed) : "Header unreadable - load checks backup", muted);
+                }
+                if (!view.saves.empty()) {
+                    const auto& slot = view.saves[view.menu_index];
+                    text(102, 320, slot.metadata ? std::string(biome_name(slot.biome)) + " / " + geography_name(slot.geography) + (slot.backup_only ? " | BACKUP ONLY" : "") : "Unknown settings - load checks the backup", muted);
+                }
+                text(102, 344, "A LOAD  Y NAME  X DELETE", muted);
+                text(102, 376, "L1 SNAPSHOT  B BACK", muted); break;
+            }
+            case Panel::ConfirmDelete:
+                text(102, 80, "DELETE SAVED WORLD", cream, 3);
+                text(102, 146, view.pending_name, cream);
+                text(102, 184, "Save ID: " + view.pending_slot, muted);
+                text(102, 230, "Deletes this world's save and backup. Exports are retained. This cannot be undone in the game.", muted, 2, 504);
+                text(102, 340, "A DELETE  B CANCEL", cream); break;
             case Panel::Tile: {
                 const auto at = view.selected_tile;
                 const auto& cell = world.tile(at.x, at.y);

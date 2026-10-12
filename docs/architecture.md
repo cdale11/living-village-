@@ -7,7 +7,7 @@ recipes, capacity/effect queries, placement validation and shared need-driven
 planning. `population.cpp` handles homes, households, births, arrivals, ageing
 and deaths. `brain.cpp` implements the per-resident MLP and bounded SGD;
 `learning.cpp` extracts observations and credits action outcomes. `saves.cpp`
-records full state and migrates version 1/2/3/4 saves to version 5. Headless runs and tests use the same simulation as the graphical game.
+records full state and migrates version 1/2/3/4/5 saves to version 6. Headless runs and tests use the same simulation as the graphical game.
 
 `main.cpp` feeds fixed 0.1-second steps. Rendering targets 30 FPS. Speed 4×
 advances four times as many steps. Stalls are bounded to 0.2 seconds and at most
@@ -45,3 +45,10 @@ statistics. Chronicles cap at 512 entries and daily statistics at 128.
 audio and input handles optional rumble. `performance.cpp` uses a fixed frame
 sample buffer and read-only battery queries. Headless runs initialize none of
 the SDL/audio paths.
+
+`generation.cpp` generates explicit biome/geography settings, preserving the
+original default algorithm. `slots.cpp` manages bounded named/legacy worlds,
+stable IDs, active markers, rename/snapshot and confirmed inactive deletion.
+Controller world/seed/name editors live in `ui.cpp`; they do not alter a running
+world until creation/loading succeeds. Autosaving never writes an unconfirmed
+first-run preview or a corrupt startup placeholder.

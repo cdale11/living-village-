@@ -98,7 +98,8 @@ void World::update_needs() {
 }
 double World::growing_rate() const {
     const double seasonal[] = {1.0, 1.2, 0.9, 0.5};
-    return seasonal[season()] * (raining() ? 1.15 : 1.0);
+    const double climate[] = {1.0, 1.1, 1.05, .65};
+    return seasonal[season()] * (raining() ? 1.15 : 1.0) * climate[static_cast<int>(biome)];
 }
 const char* World::season_name() const {
     const char* names[] = {"Spring", "Summer", "Autumn", "Winter"}; return names[season()];

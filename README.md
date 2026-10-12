@@ -35,11 +35,12 @@ ssh root@DEVICE_IP 'tar -xzf /userdata/living-village-knulli-arm64.tar.gz -C /us
 
 All files and saves stay on `/userdata`; installation does not modify the system partition. On upgrades, replace the launcher and `bin/`, preserving your `saves/` and customized `config/`. The archive contains empty save/log directories, with no save file.
 
-The user confirmed the initial ARM64 release runs on KNULLI. This village-life update is cross compiled and tested on desktop, and still needs physical validation on the handheld. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
+The user confirmed the initial ARM64 release runs on KNULLI. This world-management update is cross compiled and tested on desktop, and still needs physical validation on the handheld. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
 
 ## What you can play
 
-- Explore a seeded 64×64 world with grass, trees, berry bushes, stone and ponds.
+- Create seeded 64×64 worlds with four biomes and five geographical layouts.
+- Manage up to 32 named worlds: load, rename, snapshot and confirm deletion of old saves.
 - Observe six named villagers gathering food, wood and stone, building, farming, eating, resting and socializing.
 - Watch shared needs produce real construction plans, material deliveries and cooperative work.
 - Plan shelters, food storage, stockpiles, farm plots and campfires; designate gathering areas.
@@ -51,13 +52,13 @@ The user confirmed the initial ARM64 release runs on KNULLI. This village-life u
 
 This release adds online neural learning to autonomous survival, village development, households, controller menus and persistent saves. Each resident's MLP learns from actual action outcomes and changes candidate scores within the simulation's survival and validity rules. Buildings consume delivered resources and work; farms renew food, shelters improve rest, and storage expands capacity. Seasonal/rain effects change resource growth. Households form from mutual relationships; children inherit traits and receive physically delivered meals. Conditional immigration, ageing and deaths allow generational turnover, with up to 20 living villagers. Residents acquire and change work specializations, share meals, barter surplus food/materials, dispute claims and reconcile. Workshops unlock two supplied technology upgrades. Original sound effects and optional SDL rumble are configurable. There is no offline progression.
 
-To upgrade, replace only `livingvillage/bin/living-village` and keep saves/config. Version 1–4 saves upgrade automatically to version 5, preserving existing state. Older binaries cannot read version 5 saves. Keep a separate backup before upgrading.
+To upgrade, replace only `livingvillage/bin/living-village` and keep saves/config. Version 1–5 saves upgrade automatically to version 6, preserving existing state. Older binaries cannot read version 6 saves. Keep a separate backup before upgrading.
 
 ## Planning and inspecting
 
 Move the camera reticle to a tile and press **A**. On empty grass, press A again to choose one of six buildings, then A to place the plan. Villagers gather and physically deliver the required materials before building. On a tree, bush or stone tile, A toggles a 5×5 gathering area; survival and competing village needs still affect their choices.
 
-**X** inspects the selected villager; left/right on the D-pad cycles needs/reasons, skills/personality, relationships/experiences, household/family, neural learning, and replay/work practice. **L1/R1** switches villagers and follows them. **Y** opens the village overview; A there toggles autonomous new construction plans. Left/right cycles village, population and event pages; A on the population page toggles births/arrivals. The fourth overview page controls online neural training; the fifth exports history/statistics; the sixth controls volume (A) and vibration (R1). Existing plans still receive work when automatic planning is disabled. Start also offers a confirmed new village and switching to the archived previous village. Trees display stumps when depleted, and construction tiles show work progress.
+**X** inspects the selected villager; left/right on the D-pad cycles needs/reasons, skills/personality, relationships/experiences, household/family, neural learning, and replay/work practice. **L1/R1** switches villagers and follows them. **Y** opens the village overview; A there toggles autonomous new construction plans. Left/right cycles village, population and event pages; A on the population page toggles births/arrivals. The fourth overview page controls online neural training; the fifth exports history/statistics; the sixth controls volume (A) and vibration (R1). Existing plans still receive work when automatic planning is disabled. Start opens world creation and Manage saved worlds. First launch waits for name, seed, biome and layout selection. Existing current/previous saves appear alongside named worlds. Trees display stumps when depleted, and construction tiles show work progress.
 
 ## Handheld controls
 
@@ -92,11 +93,12 @@ make input-test                  # SDL 2.0.14+ virtual controller test
 make render-test                 # dummy display, no desktop required
 make feedback-test               # PCM and dummy audio/rumble fallback
 make game-smoke                  # real AI steps + save-safe temporary benchmark
+make worlds-smoke                # initial creator, new slots, resume and corrupt-startup protection
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./build/living-village --benchmark-villagers 20 --frames 90
 ./build/living-village --headless --steps 720000
 ```
 
-The headless command advances 300 days and reports survivors, buildings, time and peak RSS, making no save writes. Normal play defaults to `./saves`; use `--save-dir PATH` to change it. `--new` starts over and replaces the current save on the next save, retaining the old one as backup. `--no-save` disables loading/writing for temporary sessions. See `--help` for diagnostics.
+The headless command advances 300 days and reports survivors, buildings, time and peak RSS, making no save writes. Normal play defaults to `./saves`; use `--save-dir PATH` to change it. `--new` creates a separate named save and preserves earlier worlds; `--seed`, `--biome`, `--layout` and `--world-name` configure it. `--no-save` disables loading/writing for temporary sessions. See `--help` for diagnostics.
 
 ## ARM64 package build
 
@@ -111,10 +113,10 @@ Output: `dist/living-village-knulli-arm64.tar.gz`. Targets Cortex-A53, AArch64 L
 
 ## Persistence and verification
 
-A versioned text save with checksum records neural weights and pending learning experiences, random generator, terrain/resources, time, buildings/progress/invested materials, crops/fuel, inventories, skills, relationships, experiences, goals/paths/memories, designations, simulation settings and events. Writes use `fsync`, same-directory rename, directory flush and a validated `.bak` previous save. Corrupt saves fall back to backup. SIGINT/SIGTERM/SIGHUP request clean save/exit; focus/background events save and pause. SIGKILL or power loss can lose progress since the latest autosave.
+A versioned text save with checksum records world name/generation settings, neural weights and pending learning experiences, random generator, terrain/resources, time, buildings/progress/invested materials, crops/fuel, inventories, skills, relationships, experiences, goals/paths/memories, designations, simulation settings and events. Writes use `fsync`, same-directory rename, directory flush and a validated `.bak` previous save. Corrupt saves fall back to backup. SIGINT/SIGTERM/SIGHUP request clean save/exit; focus/background events save and pause. SIGKILL or power loss can lose progress since the latest autosave.
 
 Verified on x86 Linux: GCC and LLVM libc++ simulation suites, SDL dummy rendering, virtual controller/Fn+Start mapping, old-save migration, deterministic continuation, corruption recovery, physical resource delivery and child care, construction, households, births, immigration, identity safety and bounded history. A 3,500-day regression finishes with 20 survivors after births and deaths. Neural regressions verify learned action changes, reward reversal, bounded replay, live updates, training pause/resume and exact learning continuation. Society tests cover earned occupations, physical barter/sharing, conflicts/reconciliation, workshop costs/effects, and escaped CSV exports. Original PCM, dummy SDL audio and temporary save-safe graphical benchmarks are tested. Address/undefined-behavior sanitizer checks pass. The ARM64 executable is cross compiled; these are **not handheld performance results**.
 
-[Priority status](docs/priorities.md) · [Society and technology](docs/society.md) · [Device measurement](docs/device-validation.md) · [Neural learning](docs/neural-learning.md) · [Population rules](docs/population.md) · [Architecture](docs/architecture.md) · [Simulation rules](docs/simulation-design.md) · [KNULLI checks](docs/knulli.md)
+[World creation/save management](docs/world-management.md) · [Priority status](docs/priorities.md) · [Society and technology](docs/society.md) · [Device measurement](docs/device-validation.md) · [Neural learning](docs/neural-learning.md) · [Population rules](docs/population.md) · [Architecture](docs/architecture.md) · [Simulation rules](docs/simulation-design.md) · [KNULLI checks](docs/knulli.md)
 
 Original code, generated graphics and procedural audio: MIT. SDL2 headers: zlib, notice in `vendor/SDL2/LICENSE.txt`. The ARM64 binary includes LLVM libc++/ABI (Apache 2.0 with LLVM exceptions) and Zig runtime (MIT); notices are shipped in the package's `licenses/` directory.

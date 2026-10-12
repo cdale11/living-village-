@@ -10,6 +10,9 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <iomanip>
+#include <sstream>
+#include <cctype>
 #include <stdexcept>
 #include <sys/resource.h>
 
@@ -19,9 +22,17 @@ void signal_stop(int) { stop_requested = 1; }
 struct Options {
     bool fullscreen = false, headless = false, no_save = false, new_world = false, diagnose = false, profile = false;
     std::uint32_t seed = 20261011;
+    village::Biome biome = village::Biome::Temperate;
+    village::Geography geography = village::Geography::Ponds;
+    std::string world_name = "New Village";
     int frames = 0, steps = 24000, benchmark_villagers = 0;
     std::string save_dir = "saves", screenshot;
 };
+std::uint32_t seed_value(const std::string& value) {
+    if (value.empty() || value.size() > 10 || value.find_first_not_of("0123456789") != std::string::npos) throw std::runtime_error("Seed must be 0 to 4294967295");
+    const auto number = std::stoull(value); if (number > 4294967295ULL) throw std::runtime_error("Seed must be 0 to 4294967295");
+    return static_cast<std::uint32_t>(number);
+}
 Options options(int argc, char** argv) {
     Options result;
     for (int i = 1; i < argc; ++i) {
@@ -34,7 +45,17 @@ Options options(int argc, char** argv) {
         else if (arg == "--profile") result.profile = true;
         else if (arg == "--benchmark-villagers") { result.benchmark_villagers = std::stoi(value()); result.no_save = true; result.new_world = true; result.profile = true; }
         else if (arg == "--diagnose-input") result.diagnose = true;
-        else if (arg == "--seed") result.seed = static_cast<std::uint32_t>(std::stoul(value()));
+        else if (arg == "--seed") result.seed = seed_value(value());
+        else if (arg == "--world-name") { result.world_name = value(); if (!village::valid_world_name(result.world_name)) throw std::runtime_error("Invalid world name"); }
+        else if (arg == "--biome") {
+            const auto name = value(); bool found = false;
+            for (int b = 0; b < village::biome_count; ++b) { std::string label = village::biome_name(static_cast<village::Biome>(b)); for (char& c : label) c = static_cast<char>(std::tolower(c)); if (label == name) { result.biome = static_cast<village::Biome>(b); found = true; } }
+            if (!found) throw std::runtime_error("Biome: temperate, woodland, meadow or arid");
+        } else if (arg == "--layout") {
+            const auto name = value(); bool found = false;
+            for (int g = 0; g < village::geography_count; ++g) { std::string label = village::geography_name(static_cast<village::Geography>(g)); for (char& c : label) c = static_cast<char>(std::tolower(c)); if (label == name) { result.geography = static_cast<village::Geography>(g); found = true; } }
+            if (!found) throw std::runtime_error("Layout: ponds, river, island, coast or highlands");
+        }
         else if (arg == "--steps") result.steps = std::stoi(value());
         else if (arg == "--frames") result.frames = std::stoi(value());
         else if (arg == "--save-dir") result.save_dir = value();
@@ -42,6 +63,8 @@ Options options(int argc, char** argv) {
         else if (arg == "--help") {
             std::cout << "Living Village C++ / SDL2\n"
                       << "--fullscreen --seed N --save-dir PATH --new --no-save\n"
+                      << "--world-name NAME --biome temperate|woodland|meadow|arid\n"
+                      << "--layout ponds|river|island|coast|highlands\n"
                       << "--headless --steps N   (no display, SDL or save writes)\n"
                       << "--diagnose-input --frames N --screenshot FILE.ppm\n"
                       << "--profile --benchmark-villagers N (6..20, temporary world, no saves)\n";
@@ -57,7 +80,7 @@ int main(int argc, char** argv) {
     using namespace village;
     try {
         const Options config = options(argc, argv);
-        World world(config.seed);
+        World world(config.seed, config.biome, config.geography); world.world_name = config.world_name;
         if (config.benchmark_villagers) {
             world.population_growth = false;
             while (static_cast<int>(world.villagers.size()) < config.benchmark_villagers) {
@@ -77,14 +100,29 @@ int main(int argc, char** argv) {
                       << " alive (" << world.child_count() << " children), " << world.births << " births, " << world.arrivals << " arrivals, " << world.deaths << " deaths, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, " << training_updates << " retained learning updates, peak RSS " << usage.ru_maxrss << " KiB\n";
             return 0;
         }
-        const auto save_path = std::filesystem::path(config.save_dir) / "village.lvsave";
-        Interface ui;
-        if (!config.new_world && !config.no_save && (std::filesystem::exists(save_path) || std::filesystem::exists(save_path.string() + ".bak"))) {
-            bool backup = false;
-            world = load_save(save_path, &backup);
-            ui.view.status = backup ? "Recovered previous save" : "Village loaded";
+        SaveCatalog catalog(config.save_dir);
+        Interface ui; bool ready = config.no_save;
+        std::string active_id;
+        ui.view.draft_seed = config.seed; ui.view.draft_biome = config.biome; ui.view.draft_geography = config.geography; ui.view.draft_name = config.world_name;
+        if (!config.no_save) {
+            active_id = catalog.active();
+            if (active_id.empty() && catalog.exists("default")) active_id = "default";
+            if (active_id.empty()) { const auto slots = catalog.list(); if (!slots.empty()) active_id = slots.front().id; }
+            if (!active_id.empty()) {
+                try { bool backup = false; world = catalog.load(active_id, &backup); ready = true; ui.view.status = backup ? "Recovered previous save" : "Village loaded"; }
+                catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "Save could not load - choose or create a world"; ui.view.panel = Panel::Saves; }
+            }
+            if (config.new_world) {
+                try {
+                    World fresh(config.seed, config.biome, config.geography); fresh.world_name = config.world_name;
+                    const auto id = catalog.create(fresh); catalog.activate(id); active_id = id; world = std::move(fresh); ready = true;
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); ui.view.panel = Panel::Saves; }
+            }
         }
+        ui.view.has_world = ready; ui.view.active_slot = ready ? active_id : ""; ui.view.saves = config.no_save ? std::vector<SaveSlot>{} : catalog.list();
+        if (!ready && ui.view.panel != Panel::Saves) ui.view.panel = Panel::NewVillage;
         ui.view.speed = world.simulation_speed;
+        auto save_path = active_id.empty() ? std::filesystem::path(config.save_dir) / "village.lvsave" : catalog.path(active_id);
         std::signal(SIGINT, signal_stop); std::signal(SIGTERM, signal_stop); std::signal(SIGHUP, signal_stop);
         SDLApi sdl;
         sdl.SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
@@ -112,15 +150,21 @@ int main(int argc, char** argv) {
         Uint32 previous = sdl.GetTicks(), last_save = previous;
         double accumulator = 0;
         int frame_count = 0;
-        bool running = true; Performance performance; const int starting_battery = config.profile ? battery_percent() : -1;
+        bool running = true, exit_saved = false; Performance performance; const int starting_battery = config.profile ? battery_percent() : -1;
         if (config.profile) std::cout << "Profile start: residents=" << world.alive_count() << " battery_percent=" << starting_battery << "\n";
         std::cout << std::flush;
         auto save = [&]() {
-            if (config.no_save) return true;
-            last_save = sdl.GetTicks(); // Failed autosaves retry in 30 seconds, not every frame.
+            last_save = sdl.GetTicks();
+            if (config.no_save || !ready) return true; // Failed autosaves retry in 30 seconds, not every frame.
             try { save_atomic(world, save_path); ui.view.status = "Village saved"; return true; }
             catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "SAVE FAILED - CHECK LOG / FREE SPACE"; return false; }
         };
+        auto refresh_saves = [&]() {
+            ui.view.saves = catalog.list(); ui.view.active_slot = ready ? active_id : "";
+            ui.view.menu_index = std::clamp(ui.view.menu_index, 0, std::max(0, static_cast<int>(ui.view.saves.size()) - 1));
+        };
+        std::mt19937 creation_rng(static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count()));
+        auto reset_view = [&]() { ui = Interface{}; ui.view.has_world = ready; ui.view.active_slot = active_id; ui.view.speed = world.simulation_speed; accumulator = 0; };
         while (running && !stop_requested) {
             const auto frame_start = std::chrono::steady_clock::now();
             int frame_steps = 0;
@@ -133,7 +177,8 @@ int main(int argc, char** argv) {
                 const bool benchmark_focus = config.benchmark_villagers && event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST;
                 if (benchmark_focus) std::cout << "Benchmark: ignoring window focus loss in temporary diagnostic world\n";
                 if (!benchmark_focus && ((event.type == SDL_APP_WILLENTERBACKGROUND || event.type == SDL_APP_DIDENTERBACKGROUND) || (event.type == SDL_WINDOWEVENT && (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST || event.window.event == SDL_WINDOWEVENT_MINIMIZED)))) {
-                    ui.view.panel = Panel::Menu; ui.view.menu_index = 0; save(); accumulator = 0;
+                    if (ui.view.panel == Panel::Map) { ui.view.panel = Panel::Menu; ui.view.menu_index = 0; }
+                    save(); accumulator = 0;
                 }
                 input.handle(event);
             }
@@ -143,9 +188,10 @@ int main(int argc, char** argv) {
             world.simulation_speed = ui.view.speed;
             if (request == Request::Save) save();
             else if (request == Request::Load) {
-                try { world = load_save(save_path); ui.view.speed = world.simulation_speed; ui.view.status = "Village loaded"; accumulator = 0; }
+                if (!ready) { ui.view.panel = Panel::Saves; refresh_saves(); }
+                else try { world = load_save(save_path); ui.view.speed = world.simulation_speed; ui.view.status = "Village loaded"; accumulator = 0; }
                 catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "LOAD FAILED - CHECK LOG"; }
-            } else if (request == Request::Exit) { if (save()) running = false; }
+            } else if (request == Request::Exit) { if (save()) { running = false; exit_saved = true; } }
             else if (request == Request::Plan) {
                 if (world.plan(static_cast<BuildingKind>(ui.view.menu_index), ui.view.selected_tile)) {
                     ui.view.status = "Plan placed - villagers supply and build it"; ui.view.panel = Panel::Map;
@@ -165,22 +211,59 @@ int main(int argc, char** argv) {
             } else if (request == Request::ToggleRumble) {
                 world.rumble_enabled = !world.rumble_enabled; if (world.rumble_enabled) input.rumble(); else input.rumble(0, 0);
             } else if (request == Request::ExportHistory) {
-                try { export_history(world, std::filesystem::path(config.save_dir) / "exports"); ui.view.status = "History exported to saves/exports"; }
+                try { export_history(world, catalog.export_directory(active_id.empty() ? "temporary" : active_id)); ui.view.status = "History exported to this world's exports folder"; }
                 catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "EXPORT FAILED - CHECK LOG"; }
+            } else if (request == Request::RandomSeed) {
+                ui.view.draft_seed = creation_rng();
+                if (ui.view.panel == Panel::SeedEdit) { std::ostringstream digits; digits << std::setw(10) << std::setfill('0') << ui.view.draft_seed; ui.view.edit_buffer = digits.str(); }
+                ui.view.status = "Random seed chosen";
+            } else if (request == Request::OpenSaves) {
+                try { refresh_saves(); } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
             } else if (request == Request::NewVillage) {
                 try {
-                    if (!config.no_save) save_atomic(world, std::filesystem::path(config.save_dir) / "previous-village.lvsave");
-                    world = World(world.seed + 1); ui = Interface{};
-                    if (save()) ui.view.status = "New village - earlier village archived";
-                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "COULD NOT ARCHIVE - KEPT CURRENT VILLAGE"; }
-            } else if (request == Request::PreviousVillage) {
+                    World fresh(ui.view.draft_seed, ui.view.draft_biome, ui.view.draft_geography); fresh.world_name = ui.view.draft_name;
+                    if (!save()) throw std::runtime_error("Current world could not save - creation cancelled");
+                    std::string id;
+                    if (!config.no_save) { id = catalog.create(fresh); catalog.activate(id); }
+                    world = std::move(fresh); active_id = id; ready = true;
+                    if (!id.empty()) save_path = catalog.path(id);
+                    reset_view(); last_save = sdl.GetTicks(); ui.view.status = "New world created - earlier worlds preserved";
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); ui.view.panel = Panel::NewVillage; }
+            } else if (request == Request::LoadSlot) {
                 try {
-                    const auto archived_path = std::filesystem::path(config.save_dir) / "previous-village.lvsave";
-                    World archived = load_save(archived_path);
-                    if (!config.no_save) save_atomic(world, archived_path);
-                    world = std::move(archived); ui = Interface{}; ui.view.speed = world.simulation_speed;
-                    if (save()) ui.view.status = "Switched to previous village";
-                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "NO PREVIOUS VILLAGE AVAILABLE"; }
+                    const auto id = ui.view.saves.at(ui.view.menu_index).id;
+                    if (ready && id == active_id) { ui.view.panel = Panel::Map; ui.view.status = "This village is already open"; }
+                    else {
+                        bool backup = false; World loaded = catalog.load(id, &backup);
+                        if (!save()) throw std::runtime_error("Current world could not save - switch cancelled");
+                        if (!config.no_save) catalog.activate(id);
+                        world = std::move(loaded); active_id = id; ready = true; save_path = catalog.path(id); reset_view();
+                        last_save = sdl.GetTicks(); ui.view.status = backup ? "World loaded from backup" : "World loaded";
+                    }
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
+            } else if (request == Request::CopyWorld) {
+                try {
+                    if (config.no_save) throw std::runtime_error("Temporary sessions do not create save copies");
+                    if (!save()) throw std::runtime_error("Current world could not save");
+                    World copy = world; copy.world_name = world.world_name.substr(0, 15) + " Snapshot";
+                    catalog.create(copy); refresh_saves(); ui.view.status = "Independent snapshot saved";
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
+            } else if (request == Request::DeleteSlot) {
+                try {
+                    if (config.no_save) throw std::runtime_error("Temporary sessions do not delete saves");
+                    catalog.erase(ui.view.pending_slot, ready ? active_id : ""); ui.view.status = "Save and its backup deleted";
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
+                ui.view.panel = Panel::Saves; refresh_saves();
+            } else if (request == Request::RenameSlot) {
+                try {
+                    if (config.no_save) throw std::runtime_error("Temporary sessions do not rename saves");
+                    if (ready && ui.view.pending_slot == active_id) {
+                        const auto previous_name = world.world_name; world.world_name = ui.view.pending_name;
+                        if (!save()) { world.world_name = previous_name; throw std::runtime_error("Rename could not save"); }
+                    } else catalog.rename(ui.view.pending_slot, ui.view.pending_name);
+                    ui.view.status = "World renamed";
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
+                refresh_saves();
             } else if (request == Request::Designate) {
                 ui.view.status = world.designate(ui.view.selected_tile) ? "Gathering area updated" : "Choose a tree, bush or stone - max 16 areas";
             }
@@ -223,7 +306,7 @@ int main(int argc, char** argv) {
                 if (frame_count % 300 == 0) std::cout << performance.report() << '\n' << std::flush;
             }
         }
-        const bool saved = save();
+        const bool saved = exit_saved || save();
         if (config.profile) std::cout << performance.report() << " battery_start=" << starting_battery << " battery_end=" << battery_percent() << "\n";
         std::cout << "Exited cleanly after " << frame_count << " frames\n";
         return saved ? 0 : 1;

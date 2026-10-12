@@ -103,19 +103,19 @@ Y opens village overview; left/right reaches population and history. A on the
 population page pauses/resumes *new* births and arrivals. Ageing, existing
 children and care continue. Pausing the game stops all simulation time.
 
-The pause menu includes New village with an explicit confirmation. The current
-world is archived as `saves/previous-village.lvsave`. Switch previous village
-swaps the saved world with the current one. Both retain normal atomic writes
-and backups. Keep the whole saves folder when upgrading or synchronizing.
+The pause menu includes configured world creation and management of independent
+saved worlds. Older current/previous files remain selectable; new worlds use
+separate named slots. Keep the whole saves folder when upgrading or synchronizing.
+See [world management](world-management.md) for controller naming, seeds and deletion.
 
-Version 5 saves retain demographics, stable IDs, homes, parents, names, partners,
+Version 6 saves retain demographics, stable IDs, homes, parents, names, partners,
 age progress, death causes, loose supplies, sparse relationships, and growth
-preferences. Versions 1–4 upgrade automatically with existing time, goals,
+preferences. Versions 1–5 upgrade automatically with existing time, goals,
 inventories, resource changes and PRNG intact. Existing ages are preserved and
 start accumulating birthday progress after upgrade. Initial ancestry is unknown;
 no family history is invented for old residents. Newly upgraded worlds delay
 arrival opportunities rather than immediately adding a crowd. Old binaries
-cannot read version 5 saves. There is no powered-off progression.
+cannot read version 6 saves. There is no powered-off progression.
 
 Each starting resident, newborn and arrival also receives an independent
 [online MLP](neural-learning.md), whose weights and pending experience are saved.

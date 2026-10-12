@@ -28,7 +28,7 @@ std::string read_file(const std::filesystem::path& path) {
     return data.str();
 }
 void flush_file(const std::filesystem::path& path, const std::string& data) {
-    int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0600);
     if (fd < 0) throw std::runtime_error("Cannot write save " + path.string());
     std::size_t offset = 0;
     while (offset < data.size()) {
@@ -45,7 +45,8 @@ void flush_file(const std::filesystem::path& path, const std::string& data) {
 
 std::string World::serialize() const {
     std::ostringstream out;
-    out << std::setprecision(17) << "LIVING_VILLAGE 5\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
+    out << std::setprecision(17) << "LIVING_VILLAGE 6\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
+    out << "GENERATION " << generator_version << ' ' << static_cast<int>(biome) << ' ' << static_cast<int>(geography) << ' ' << std::quoted(world_name) << '\n';
     out << wood_stock << ' ' << stone_stock << ' ' << auto_develop << ' ' << food_shortage << ' ' << simulation_speed << '\n';
     out << population_growth << ' ' << next_person_id << ' ' << next_migration_day << ' ' << next_birth_day << ' ' << births << ' ' << arrivals << ' ' << deaths << '\n';
     out << learning_enabled << " NEURAL 2 " << brain_inputs << ' ' << brain_hidden << ' ' << brain_weights << ' ' << replay_capacity << ' ' << work_types << '\n';
@@ -116,9 +117,16 @@ World World::deserialize(const std::string& data) {
     trailer >> expected; require(!trailer.fail()); trailer >> std::ws; require(trailer.eof());
     require(checksum(data.substr(0, footer)) == expected);
     std::istringstream in(data.substr(0, footer)); std::string magic; int version = 0;
-    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 5);
+    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 6);
     std::uint32_t seed = 0; in >> seed; World world(seed); world.chronicle.clear(); world.statistics.clear(); world.event_sequence = 0;
     in >> world.ticks >> world.food_stock;
+    if (version >= 6) {
+        std::string label; int biome = 0, geography = 0;
+        in >> label >> world.generator_version >> biome >> geography >> std::quoted(world.world_name);
+        require(label == "GENERATION" && world.generator_version == 1 && biome >= 0 && biome < biome_count && geography >= 0 && geography < geography_count
+            && valid_world_name(world.world_name));
+        world.biome = static_cast<Biome>(biome); world.geography = static_cast<Geography>(geography);
+    }
     if (version >= 2) in >> world.wood_stock >> world.stone_stock >> world.auto_develop >> world.food_shortage >> world.simulation_speed;
     require(world.simulation_speed == 1 || world.simulation_speed == 2 || world.simulation_speed == 4);
     if (version >= 3) in >> world.population_growth >> world.next_person_id >> world.next_migration_day >> world.next_birth_day >> world.births >> world.arrivals >> world.deaths;
@@ -277,6 +285,15 @@ World World::deserialize(const std::string& data) {
         world.event_sequence = world.chronicle.size();
     }
     require(!in.fail()); in >> std::ws; require(in.eof()); return world;
+}
+
+void write_atomic_text(const std::filesystem::path& filename, const std::string& text) {
+    auto directory = filename.parent_path(); if (directory.empty()) directory = ".";
+    std::filesystem::create_directories(directory);
+    flush_file(filename.string() + ".tmp", text); std::filesystem::rename(filename.string() + ".tmp", filename);
+    const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
+    if (fd < 0) throw std::runtime_error("Cannot flush save metadata directory");
+    const int result = ::fsync(fd); ::close(fd); if (result != 0) throw std::runtime_error("Save metadata flush failed");
 }
 
 void save_atomic(const World& world, const std::filesystem::path& filename) {

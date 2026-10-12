@@ -31,3 +31,8 @@ synthetic test worlds, not player saves.
 `ffc48f2`, seed 444, 4,000 updates, with GCC and the Zig SDK respectively.
 They contain genuinely trained weights and pending experiences and test that
 version 5 preserves them while initializing replay and work history.
+
+`version5.lvsave` and `version5-libcxx.lvsave` come from actual source commit
+`518409e`, seed 555, 4,000 updates, built with GCC and Zig respectively. They
+exercise generation/name metadata migration while retaining replay, occupations,
+technology/social/history state. They are synthetic worlds, not player saves.

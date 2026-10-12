@@ -119,7 +119,7 @@ Relationships are bounded and each villager keeps six significant experiences.
 
 ## Persistence and bounds
 
-Version 5 saves record all resources, buildings, invested materials, progress,
+Version 6 saves record all resources, buildings, invested materials, progress,
 contributors, crops, fuel, gathering areas, skills, relationships, experiences,
 goals/targets, paths, memories, settings and PRNG state. Version 1 saves upgrade
 on load, preserving old villagers/time/inventories/terrain/goals/PRNG and adding
@@ -141,3 +141,8 @@ promised to be identical. There is no powered-off progression or game network.
 Version 5 retains replay, local neural RNG, occupations, technology, staged
 upgrade supplies, social counters, bounded chronicle/statistics and feedback
 settings. The workshop and social/economy rules are in [society.md](society.md).
+
+Version 6 adds named-world and generation metadata without regenerating old
+terrain. Climate multipliers and resource distributions for the four biomes,
+and water/mineral geometry for the five layouts, are documented in
+[world-management.md](world-management.md).

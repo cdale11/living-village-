@@ -13,6 +13,11 @@ constexpr int map_size = 64;
 constexpr double fixed_step = 0.1;
 constexpr int population_limit = 20, dead_history_limit = 32, days_per_year = 40;
 enum class Terrain : int { Grass, Tree, Stone, Water, Bush };
+enum class Biome : int { Temperate, Woodland, Meadow, Arid };
+enum class Geography : int { Ponds, River, Island, Coast, Highlands };
+constexpr int biome_count = 4, geography_count = 5;
+const char* biome_name(Biome biome);
+const char* geography_name(Geography geography);
 enum class Goal : int { Explore, Forage, Eat, Rest, GatherWood, CollectStone, DeliverMaterials, TakeMaterials, Build, TendFarm, DeliverFood, StoreMaterials, Socialize, RefuelFire, Arrive, Play, Care, CollectMeal, WaitForCare };
 struct Tile { Terrain terrain = Terrain::Grass; int food = 0; double regrowth = 0; int wood = 0, stone = 0; int loose_food = 0, loose_wood = 0, loose_stone = 0; };
 struct Point { int x = 0, y = 0; bool operator==(const Point& b) const { return x == b.x && y == b.y; } };
@@ -89,8 +94,12 @@ struct DailyRecord {
 };
 class World {
 public:
-    explicit World(std::uint32_t seed = 20261011);
+    explicit World(std::uint32_t seed = 20261011, Biome biome = Biome::Temperate, Geography geography = Geography::Ponds);
     std::uint32_t seed;
+    Biome biome = Biome::Temperate;
+    Geography geography = Geography::Ponds;
+    int generator_version = 1;
+    std::string world_name = "Living Village";
     std::uint64_t ticks = 0;
     int food_stock = 18;
     int wood_stock = 0, stone_stock = 0;
@@ -152,6 +161,7 @@ public:
     bool research(Villager& person, Building& workshop, double dt);
     void record_day();
 private:
+    void generate_terrain();
     double social_exchange(Villager& person, Villager& other);
     void resource_conflict(Villager& person);
     void learn(Villager& person, double terminal_reward = 0);

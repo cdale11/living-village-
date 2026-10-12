@@ -88,13 +88,13 @@ improvement in every village is not promised.
 
 ## Saves and tests
 
-Save version **5** contains each model's weights, learning statistics, pending
+Save version **6** contains each model's weights, learning statistics, pending
 inputs, reward components and the village training preference. The existing
 atomic writes, checksums and backup recovery remain. Save validation bounds
 weights, observations and statistics and rejects non-finite values or a
 mismatched network schema. Versions 1–3 load automatically with fresh neural
 models; version 4 preserves its trained weights and pending experiences; their established world state is retained. Back up saves before upgrade;
-older binaries cannot read version 5.
+older binaries cannot read version 6.
 
 `make test` includes learned action-selection changes, successful/failed outcome
 discrimination, reward reversal/relearning, deterministic backpropagation, independent residents, live
@@ -119,3 +119,8 @@ deterministic within the supported simulation/runtime.
 Practice adds up to six utility points for familiar work and creates changing
 occupation labels; see [society rules](society.md). An MLP bonus, practice bonus
 and experiment bonus remain subordinate to resource/location/action validity.
+
+Separate saved worlds retain separate models and replay buffers. A snapshot
+keeps exact neural state as a playable independent branch; renaming a world
+does not reset training. Generation/name metadata in version 6 preserves
+version 5 learned state.

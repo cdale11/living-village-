@@ -147,6 +147,23 @@ bool World::welcome_migrant() {
         entry = candidates[(seed + static_cast<unsigned>(attempt)) % 4]; path = route(entry, camp);
         if (!path.empty()) break;
     }
+    if (path.empty() && geography == Geography::Island) {
+        // Sea arrivals disembark on a reachable shore rather than spawning in water.
+        int attempts = 0;
+        for (int index = 0; index < map_size * map_size && attempts < 64; ++index) {
+            const int cell = (index + static_cast<int>(seed % 4096)) % 4096;
+            Point shore{cell % map_size, cell / map_size};
+            if (!passable(shore.x, shore.y)) continue;
+            bool coastal = false;
+            for (Point delta : {Point{1, 0}, Point{-1, 0}, Point{0, 1}, Point{0, -1}}) {
+                const int x = shore.x + delta.x, y = shore.y + delta.y;
+                if (x >= 0 && x < map_size && y >= 0 && y < map_size && tile(x, y).terrain == Terrain::Water) coastal = true;
+            }
+            if (!coastal) continue;
+            ++attempts; path = route(shore, camp);
+            if (!path.empty()) { entry = shore; break; }
+        }
+    }
     if (path.empty()) return false;
     int home = -1, best = std::numeric_limits<int>::max();
     for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Shelter && home_occupancy(b.id) < 4) {

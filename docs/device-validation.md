@@ -60,3 +60,8 @@ Headless speed does not establish graphical FPS or battery life.
 KNULLI is the sole handheld distribution target. No system partition changes or
 OS package installation are required. Inspect the actual SDL backend before
 setting platform overrides; do not assume a desktop video driver.
+
+Validate first-run world creation, all seed/name editor controls, biome/layout
+choices, save switching, rename, snapshot and confirmed inactive deletion on
+the handheld. Use synthetic worlds when checking deletion. Details are in
+[world-management.md](world-management.md).

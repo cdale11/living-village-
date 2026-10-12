@@ -68,9 +68,9 @@ counts. This is bounded recent history, not an unlimited lifetime journal.
 
 **Y → economy/history → A** exports:
 
-- `saves/exports/village-history.csv`
-- `saves/exports/village-statistics.csv`
-- `saves/exports/residents.csv`
+- `saves/exports/<world-id>/village-history.csv`
+- `saves/exports/<world-id>/village-statistics.csv`
+- `saves/exports/<world-id>/residents.csv`
 
 Files include the world seed, use escaped CSV text, and are each flushed and
 atomically replaced. Re-exporting replaces the previous export; copy exports
@@ -79,7 +79,7 @@ residents, including up to 32 deceased residents. Old recent logs are imported
 with an explicit `Imported log:` prefix at the upgrade tick; earlier chronological
 records and historical occupation data are not invented.
 
-Save version 5 retains all these systems, replay, exploration state and
-sound/rumble preferences. Versions 1–4 upgrade automatically; version 4 trained
+Save version 6 retains all these systems, replay, exploration state and
+sound/rumble preferences. Versions 1–5 upgrade automatically; version 4 trained
 weights and pending experiences remain intact. Back up the whole saves directory
-before upgrading. Older executables cannot load version 5.
+before upgrading. Older executables cannot load version 6.

@@ -40,9 +40,15 @@ raw controllers, Start defaults to the configured `menu` button.
 configs work without adding these keys. Desktop F10+Space tests the same
 save-and-exit request. Use `--diagnose-input` if physical Fn is not recognized.
 
-Start → New village requires confirmation and archives the current village.
-Start → Switch to previous village swaps the two villages. Saves remain in
-`village.lvsave` and `previous-village.lvsave`, each with a backup.
+Start → New village opens name/seed/biome/layout selection. D-pad selects fields;
+A edits or confirms, left/right cycles options, X chooses a random seed, B cancels.
+In seed/name editors, left/right moves the cursor, up/down changes characters,
+and A accepts. Seed supports 0–4294967295 without a keyboard.
+
+Start → Manage saved worlds: up/down selects, A loads, Y renames, X requests
+confirmed deletion, and L1 snapshots the open world. The open save cannot be
+deleted until another world is opened. Old current/previous saves remain listed.
+See [world-management.md](world-management.md) for file layout and behavior.
 
 On Y's economy/history page, A exports CSV files to `saves/exports`.
 On Y's sound/vibration page, A cycles volume (including mute) and R1 toggles

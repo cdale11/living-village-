@@ -31,7 +31,12 @@ int main() {
         view.selected_tile = {36, 32};
         for (int n = 0; n < 1000; ++n) world.update();
         std::vector<Uint8> pixels(720 * 480 * 4);
-        for (Panel panel : {Panel::Map, Panel::Menu, Panel::Inspector, Panel::Overview, Panel::Speed, Panel::Controls, Panel::Tile, Panel::Build, Panel::NewVillage}) {
+        for (Panel panel : {Panel::Map, Panel::Menu, Panel::Inspector, Panel::Overview, Panel::Speed, Panel::Controls, Panel::Tile, Panel::Build, Panel::NewVillage, Panel::SeedEdit, Panel::NameEdit, Panel::ConfirmCreate, Panel::Saves, Panel::ConfirmDelete}) {
+            if (panel == Panel::SeedEdit) view.edit_buffer = "4294967295";
+            if (panel == Panel::NameEdit) view.edit_buffer = "LIVING VILLAGE           ";
+            if (panel == Panel::NewVillage) view.menu_index = 4;
+            if (panel == Panel::ConfirmDelete) { view.pending_name = "Old village"; view.pending_slot = "world-000002"; }
+            if (panel == Panel::Saves) { view.menu_index = 0; view.saves = {{"world-000001", "First Village", 123, 42, Biome::Woodland, Geography::Island, true, false}, {"world-000002", "Desert Town", 42, 11, Biome::Arid, Geography::Highlands, true, true}}; view.active_slot = "world-000001"; }
             view.panel = panel; if (panel == Panel::Build) view.menu_index = 5;
             graphics.draw(world, view);
             if (sdl.RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_RGBA32, pixels.data(), 720 * 4) != 0) throw std::runtime_error(sdl.GetError());
@@ -40,6 +45,8 @@ int main() {
                 if (pixels[i] != pixels[0] || pixels[i + 1] != pixels[1] || pixels[i + 2] != pixels[2]) { variation = true; break; }
             if (!variation) throw std::runtime_error("Blank render");
             if (panel == Panel::Map) graphics.screenshot("build/map-preview.ppm");
+            if (panel == Panel::Saves) graphics.screenshot("build/saves-preview.ppm");
+            if (panel == Panel::NewVillage) graphics.screenshot("build/creator-preview.ppm");
             if (panel == Panel::Build) graphics.screenshot("build/build-preview.ppm");
             if (panel == Panel::Inspector) for (int page = 1; page < 6; ++page) {
                 view.inspector_page = page; graphics.draw(world, view);

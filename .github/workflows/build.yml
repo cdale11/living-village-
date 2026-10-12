@@ -11,7 +11,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libsdl2-2.0-0
       - name: Build and test
         run: |
-          make -j2 all test input-test render-test feedback-test game-smoke
+          make -j2 all test input-test render-test feedback-test game-smoke worlds-smoke
           SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./build/living-village --frames 30 --no-save
       - uses: mlugg/setup-zig@v2
         with:

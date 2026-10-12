@@ -1,9 +1,10 @@
 #pragma once
 #include "sdl.hpp"
 #include "world.hpp"
+#include "saves.hpp"
 
 namespace village {
-enum class Panel { Map, Menu, Inspector, Overview, Speed, Controls, Tile, Build, NewVillage };
+enum class Panel { Map, Menu, Inspector, Overview, Speed, Controls, Tile, Build, NewVillage, SeedEdit, NameEdit, ConfirmCreate, Saves, ConfirmDelete };
 struct View {
     double camera_x = 32, camera_y = 32;
     int tile_size = 28, selected = 0, menu_index = 0, speed = 1;
@@ -12,6 +13,15 @@ struct View {
     int overview_page = 0;
     Point selected_tile{32, 32};
     Panel panel = Panel::Map;
+    bool has_world = true;
+    std::string active_slot, pending_slot, pending_name;
+    std::vector<SaveSlot> saves;
+    std::uint32_t draft_seed = 20261011;
+    Biome draft_biome = Biome::Temperate;
+    Geography draft_geography = Geography::Ponds;
+    std::string draft_name = "New Village", edit_buffer;
+    int edit_cursor = 0;
+    bool renaming = false;
     std::string status = "A living village begins";
 };
 class Renderer {

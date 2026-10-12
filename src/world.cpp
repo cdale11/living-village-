@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 namespace village {
 namespace {
@@ -9,28 +10,10 @@ Point position(const Villager& p) { return {static_cast<int>(std::round(p.x)), s
 int distance(Point a, Point b) { return std::abs(a.x - b.x) + std::abs(a.y - b.y); }
 }
 int World::random(int maximum) { return static_cast<int>(rng() % static_cast<unsigned>(maximum)); }
-World::World(std::uint32_t initial_seed) : seed(initial_seed), rng(seed) {
-    for (int y = 0; y < map_size; ++y) for (int x = 0; x < map_size; ++x) {
-        int roll = random(1000);
-        auto& cell = tile(x, y);
-        cell.terrain = roll < 140 ? Terrain::Tree : roll < 190 ? Terrain::Stone : roll < 255 ? Terrain::Bush : Terrain::Grass;
-        if (distance({x, y}, camp) < 7) cell.terrain = Terrain::Grass;
-        if (cell.terrain == Terrain::Bush) cell.food = 6;
-        if (cell.terrain == Terrain::Tree) cell.wood = 6;
-        if (cell.terrain == Terrain::Stone) cell.stone = 8;
-    }
-    for (int pond = 0; pond < 7; ++pond) {
-        const int px = 3 + random(58), py = 3 + random(58);
-        for (int y = std::max(0, py - 4); y <= std::min(63, py + 4); ++y)
-            for (int x = std::max(0, px - 5); x <= std::min(63, px + 5); ++x)
-                if ((x - px) * (x - px) / 2 + (y - py) * (y - py) < 13 && distance({x, y}, camp) > 9)
-                    tile(x, y) = {Terrain::Water, 0, 0};
-    }
-    for (Point p : {Point{25, 32}, Point{39, 32}, Point{32, 25}, Point{32, 39}}) tile(p.x, p.y) = {Terrain::Bush, 6, 0};
-    tile(26, 30) = {Terrain::Tree, 0, 0, 6, 0};
-    tile(38, 30) = {Terrain::Tree, 0, 0, 6, 0};
-    tile(35, 26) = {Terrain::Stone, 0, 0, 0, 8};
-    tile(29, 38) = {Terrain::Stone, 0, 0, 0, 8};
+World::World(std::uint32_t initial_seed, Biome initial_biome, Geography initial_geography)
+    : seed(initial_seed), biome(initial_biome), geography(initial_geography), rng(seed) {
+    if (static_cast<int>(biome) < 0 || static_cast<int>(biome) >= biome_count || static_cast<int>(geography) < 0 || static_cast<int>(geography) >= geography_count) throw std::invalid_argument("Unknown biome or geography");
+    generate_terrain();
     Building stockpile; stockpile.id = 0; stockpile.kind = BuildingKind::Stockpile; stockpile.position = {33, 32}; stockpile.complete = true;
     Building fire; fire.id = 1; fire.kind = BuildingKind::Campfire; fire.position = camp; fire.complete = true; fire.fuel = 240;
     buildings = {stockpile, fire};

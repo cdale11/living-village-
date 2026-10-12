@@ -14,3 +14,9 @@ Every software item above is an implemented initial version. The list does not
 claim a polished final game or physical measurements. ROCKNIX was explicitly
 removed from scope. Online C++ MLP learning, experience replay and controlled
 experimentation support these systems without network/model dependencies.
+
+World management now includes first-run name/seed/biome/layout selection,
+independent named saves, loading, renaming, snapshot branches and confirmed
+inactive deletion with backup handling. Old current/previous files and trained
+models migrate without regeneration. These controller flows still need physical
+button/display validation on the handheld.

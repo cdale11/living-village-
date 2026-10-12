@@ -19,7 +19,7 @@ ls -l /lib/ld-linux-aarch64.so.1
 ls /usr/lib/libSDL2* /lib/libSDL2* 2>/dev/null
 ```
 
-Launch from Ports, then read `livingvillage/logs/game.log`. Startup reports selected/available SDL video backends, renderer and controller name/GUID/mapping mode. Validate movement, every button, zoom, speed, pause, save/load, Fn+Start exit and lid reopening. Check A tile/building plans and gathering areas, X inspector detail pages, and Y autonomous-planning toggle. Check Y population/learning controls, X family/MLP pages, and Start new/previous village. Keep existing saves; they migrate automatically to version 5.
+Launch from Ports, then read `livingvillage/logs/game.log`. Startup reports selected/available SDL video backends, renderer and controller name/GUID/mapping mode. Validate movement, every button, zoom, speed, pause, save/load, Fn+Start exit and lid reopening. Check A tile/building plans and gathering areas, X inspector detail pages, and Y autonomous-planning toggle. Check Y population/learning controls, X family/MLP pages, and Start world creation/save management, including seed and layout editing. Keep existing saves; they migrate automatically to version 6.
 
 If video initialization fails, use the error/backend list to choose an override. Do not assume X11. **Only if KMSDRM is available and appropriate for this firmware**, put this in `config/platform.env`:
 
