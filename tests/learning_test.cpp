@@ -87,7 +87,9 @@ int main() {
         InputState press; press.pressed[static_cast<int>(Button::Confirm)] = true;
         check(ui.update(press, live, .033) == Request::ToggleLearning, "Controller could not toggle online learning");
         press = {}; press.x = -1; ui.view.panel = Panel::Inspector; ui.view.inspector_page = 0;
-        ui.update(press, live, .033); check(ui.view.inspector_page == 5, "Controller could not reach neural inspection");
+        ui.update(press, live, .033); check(ui.view.inspector_page == 7, "Controller inspector did not wrap to new outcomes page");
+        ui.update({}, live, .25); ui.view.inspector_page = 5;
+        ui.update(press, live, .033); check(ui.view.inspector_page == 4, "Controller could not reach neural inspection");
         std::cout << "PASS: MLP backpropagation, outcome discrimination/relearning, learned action changes, live independent learning, validity gates, freeze/resume, neural persistence/continuation, v3 migration, controller diagnostics\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << "FAIL: " << error.what() << '\n'; return 1; }

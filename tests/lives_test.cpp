@@ -25,6 +25,10 @@ int main() {
     std::uint64_t observed = 0, gathered = 0;
     for (const auto& p : frozen.villagers) { check(p.brain.updates == 0, "Frozen model trained"); for (auto n : p.outcomes.intervals) observed += n; for (auto n : p.outcomes.units) gathered += n; }
     check(observed > 0 && gathered > 0, "Frozen execution outcomes were not observed");
+    World housing(71); housing.food_stock = 0; housing.construction_priority = 2; housing.update();
+    check(housing.buildings.size() == 3 && housing.buildings.back().kind == BuildingKind::Shelter, "Housing priority did not influence planning");
+    World maintenance(71); maintenance.construction_priority = 3; maintenance.buildings[0].condition = 30; maintenance.update();
+    check(maintenance.buildings.size() == 2, "Maintenance priority planned new work while repairs pending");
     World pins(43); check(pins.toggle_pin(0) && pins.kill(0,"Fixture"), "Cannot pin deceased history");
     for (int n = 0; n < 34; ++n) { Villager p; p.id = pins.next_person_id++; p.name = "Archive " + std::to_string(p.id); p.health = 0; p.death_day = 1; p.death_reason = "Fixture"; pins.villagers.push_back(p); ++pins.deaths; }
     pins.update(); check(pins.person(0) && !pins.person(0)->alive() && static_cast<int>(pins.villagers.size())-pins.alive_count() == dead_history_limit, "Pinned archive not retained within cap");

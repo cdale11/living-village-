@@ -308,7 +308,18 @@ void Renderer::draw(const World& world, const View& view) {
             const SDL_Color color = trust > 0 ? SDL_Color{109,220,162,180} : SDL_Color{236,116,106,180};
             sdl.SetRenderDrawColor(renderer,color.r,color.g,color.b,color.a);
             sdl.RenderDrawLine(renderer,px(selected.x+.5),py(selected.y+.5),px(other.x+.5),py(other.y+.5));
-            text(px(other.x+.5)+4,py(other.y+.5)-12,other.name + " " + std::to_string(static_cast<int>(trust)),color,1);
+
+        }
+        if (view.ecology_overlay == 4) {
+            std::array<std::pair<double,const Villager*>,population_limit> strongest{}; int count = 0;
+            for (const auto& other : world.villagers) if (other.alive() && other.id != selected.id)
+                strongest[count++] = {selected.relationships[other.id],&other};
+            std::sort(strongest.begin(),strongest.begin()+count,[](const auto& a,const auto& b) {
+                return std::abs(a.first) == std::abs(b.first) ? a.second->id < b.second->id : std::abs(a.first) > std::abs(b.first);
+            });
+            rect(468,126,242,126,ink); text(476,134,"TOP OUTGOING TRUST",muted,1);
+            for (int i = 0; i < std::min(3,count); ++i)
+                text(476,162+i*28,strongest[i].second->name.substr(0,12)+" "+std::to_string(static_cast<int>(strongest[i].first)),strongest[i].first >= 0 ? SDL_Color{109,220,162,255} : SDL_Color{236,116,106,255});
         }
         if (view.ecology_overlay == 5) {
             const std::vector<Point>* memories[] = {&selected.known_food,&selected.known_wood,&selected.known_stone};
@@ -473,12 +484,13 @@ void Renderer::draw(const World& world, const View& view) {
                     text(102,122,"LIFE HISTORY | AGE " + std::to_string(p.age),muted);
                     if (p.life.empty()) text(102,168,"No recorded life events yet",cream);
                     const auto offset = std::min<std::size_t>(std::max(0,view.life_offset),p.life.size());
-                    for (std::size_t row = 0; row < 5 && row+offset < p.life.size(); ++row) {
+                    for (std::size_t row = 0; row < 3 && row+offset < p.life.size(); ++row) {
                         const auto& entry = p.life[p.life.size()-1-offset-row];
-                        text(102,158+static_cast<int>(row)*34,"Day " + std::to_string(1+entry.tick/2400) + ": " + entry.message,cream,1,504);
+                        const auto message = "Day " + std::to_string(1+entry.tick/2400) + ": " + entry.message;
+                        text(102,158+static_cast<int>(row)*58,message.size() > 96 ? message.substr(0,93)+"..." : message,cream,2,504);
                     }
                     const bool pinned = std::find(world.pinned_residents.begin(),world.pinned_residents.end(),p.id) != world.pinned_residents.end();
-                    text(102,344,pinned ? "A UNPIN | UP/DOWN HISTORY" : "A PIN RESIDENT | UP/DOWN HISTORY",muted,1);
+                    text(102,344,pinned ? "A UNPIN | UP/DOWN HISTORY" : "A PIN | UP/DOWN HISTORY",muted,2);
                 }
                 if (view.inspector_page == 7) {
                     const auto& m = p.outcomes; double seconds = 0; std::uint64_t units = 0;
@@ -488,7 +500,7 @@ void Renderer::draw(const World& world, const View& view) {
                     text(102,196,"Gathering units / seconds: " + std::to_string(units) + "/" + decimal(seconds),cream);
                     text(102,232,"Empty harvest attempts: " + std::to_string(m.empty_harvests),muted);
                     text(102,264,"Unreachable candidates: " + std::to_string(m.unreachable_candidates),muted);
-                    text(102,296,"Interval net hunger reduction: " + decimal(m.hunger_reduction),cream);
+                    text(102,296,"Net hunger reduction: " + decimal(m.hunger_reduction),cream);
                     text(102,332,"Includes travel. Counts continue with training frozen.",muted,1);
                 }
                 text(102, 366, "LEFT/RIGHT DETAILS   L1/R1 PEOPLE", muted);
