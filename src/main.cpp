@@ -307,8 +307,10 @@ int main(int argc, char** argv) {
                     ui.view.status = "World renamed";
                 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
                 refresh_saves();
+            } else if (request == Request::Conservation) {
+                ui.view.status = world.toggle_conservation(ui.view.selected_tile) ? "Conservation updated - natural harvest/new plans restricted" : "Choose land; maximum 16 conservation areas";
             } else if (request == Request::Designate) {
-                ui.view.status = world.designate(ui.view.selected_tile) ? "Gathering area updated" : "Choose a tree, bush or stone - max 16 areas";
+                ui.view.status = world.designate(ui.view.selected_tile) ? "Gathering area updated" : world.conserved(ui.view.selected_tile) ? "Remove conservation before adding natural harvest orders" : "Choose a tree, bush or stone - max 16 areas";
             }
             ui.view.selected = std::clamp(ui.view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
             const int watched_id = world.villagers[ui.view.selected].id;

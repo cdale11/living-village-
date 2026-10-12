@@ -27,8 +27,8 @@ void World::update_weather() {
     precipitation = weather == Weather::Storm ? .006 : weather == Weather::Rain ? .002 : weather == Weather::Snow ? .0008 : 0;
     wind = weather == Weather::Storm ? .8 : .1 + eco_random(40) / 100.0;
     dry_days = precipitation > 0 ? 0 : std::min(1000, dry_days + 1);
-    if (weather == Weather::Storm) event("Storm: runoff and exposed structures at risk");
-    else if (dry_days == 6) event("Drought: dry soil slows growth and raises fire risk");
+    if (weather == Weather::Storm) event("Storm: runoff and exposed structures at risk", "Daily weather draw selected high storm rainfall and wind");
+    else if (dry_days == 6) event("Drought: dry soil slows growth and raises fire risk", "Six consecutive dry daily transitions");
     else if (weather == Weather::Heatwave) event("Heatwave: wildlife needs water and shade");
 }
 void World::initialize_ecology(bool wildlife) {
@@ -76,11 +76,11 @@ void World::trample(Point p, double amount) {
     cell.compaction = bounded(cell.compaction + .002 * amount);
     cell.biomass = std::max(0.0, cell.biomass - .001 * amount);
 }
-bool World::ignite(Point place) {
+bool World::ignite(Point place, std::uint64_t cause) {
     if (!inside(place.x, place.y)) return false;
     auto& cell = tile(place.x, place.y);
     if (cell.terrain == Terrain::Water || cell.moisture > .4 || cell.biomass < .2 || cell.fire > 0) return false;
-    cell.fire = .25; ++ecology.fires_started; event("Wildfire ignites in dry vegetation"); return true;
+    cell.fire = .25; ++ecology.fires_started; event("Wildfire ignites in dry vegetation", "Dry fuel met ignition conditions; soil water " + std::to_string(static_cast<int>(cell.moisture * 100)) + "%", place, cause); return true;
 }
 void World::update_ecology(double seconds) {
     if (!ecology_enabled || seconds <= 0 || seconds > 10) return;
@@ -89,7 +89,7 @@ void World::update_ecology(double seconds) {
         if (weather == Weather::Storm || dry_days >= 8) {
             for (int attempt = 0; attempt < 12; ++attempt) {
                 Point place{eco_random(64), eco_random(64)};
-                if (eco_random(weather == Weather::Storm ? 8 : 40) == 0 && ignite(place)) break;
+                if (eco_random(weather == Weather::Storm ? 8 : 40) == 0 && ignite(place, weather_cause())) break;
             }
         }
     }
@@ -219,15 +219,15 @@ void World::update_ecology(double seconds) {
         t.bush_seeds = std::max(0.0, t.bush_seeds - seconds * .000002);
         if (t.terrain == Terrain::Stone && t.stone > 0 && t.erosion > .5 && ticks % 2400 == 0) { --t.stone; ++t.loose_stone; }
     }
-    if (!flood_alert && flooded > 64) { flood_alert = true; event("Flooding: low ground is waterlogged"); }
-    else if (flood_alert && flooded < 16) { flood_alert = false; event("Floodwaters have receded"); }
+    if (!flood_alert && flooded > 64) { flood_alert = true; event("Flooding: low ground is waterlogged", std::to_string(flooded) + " land tiles exceed flood threshold after hydrology update", {-1, -1}, weather_cause()); }
+    else if (flood_alert && flooded < 16) { flood_alert = false; event("Floodwaters have receded", "Fewer than 16 land tiles remain above flood threshold"); }
     for (auto& b : buildings) if (b.complete) {
         const auto& t = tile(b.position.x, b.position.y);
         const double flood = std::max(0.0, t.surface_water - .25);
         const double wear = seconds / 240 * (.04 + (raining() ? .12 : 0) + (weather == Weather::Storm ? .35 : 0));
         const double damage = wear + seconds * (flood * .02 + t.fire * .12);
         const double before = b.condition; b.condition = std::max(0.0, b.condition - damage);
-        if (before > 20 && b.condition <= 20) event(std::string(building_name(b.kind)) + " unsafe: needs repair");
+        if (before > 20 && b.condition <= 20) event(std::string(building_name(b.kind)) + " unsafe: needs repair", "Condition crossed 20 after weather/fire/flood wear; flood depth " + std::to_string(flood), b.position, weather_cause());
         if (b.kind == BuildingKind::Farm && b.food < 12 && b.condition > 20) {
             b.growth += seconds * growing_rate() * plant_growth(t) * (b.condition / 100) * (technology_level >= 2 ? 1.15 : 1);
             if (b.growth >= 45) { b.food += std::min(2, 12 - b.food); b.growth -= 45; }

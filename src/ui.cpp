@@ -55,6 +55,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         }
         return Request::None;
     }
+    if (view.panel == Panel::Tile && input.hit(Button::Overview)) return Request::Conservation;
     if (view.panel == Panel::Overview && view.overview_page == 5 && input.hit(Button::Inspect)) return Request::TestFeedback;
     if (input.hit(Button::Menu)) { view.panel = view.simulation_running() ? Panel::Menu : (view.has_world ? Panel::Map : Panel::Menu); view.menu_index = 0; }
     else if (input.hit(Button::Back)) {
@@ -103,6 +104,9 @@ Request Interface::update(const InputState& input, const World& world, double el
         view.menu_index = (view.menu_index + count + (input.y > 0 ? 1 : -1)) % count;
         repeat = .2;
     }
+    if (view.panel == Panel::Overview && view.overview_page == 2 && std::abs(input.y) >= .5 && repeat <= 0) {
+        view.history_offset = std::clamp(view.history_offset + (input.y < 0 ? 1 : -1), 0, std::max(0, static_cast<int>(world.chronicle.size()) - 1)); repeat = .2;
+    }
     if (std::abs(input.x) < .5) page_repeat = 0;
     if (view.panel == Panel::NewVillage && std::abs(input.x) >= .5 && page_repeat <= 0) {
         const int direction = input.x > 0 ? 1 : -1;
@@ -117,7 +121,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         page_repeat = .2;
     }
     if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.overview_page = (view.overview_page + 10 + (input.x > 0 ? 1 : -1)) % 10;
+        view.overview_page = (view.overview_page + 11 + (input.x > 0 ? 1 : -1)) % 11;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
@@ -158,6 +162,13 @@ Request Interface::update(const InputState& input, const World& world, double el
         } else if (view.panel == Panel::Tile && world.can_plan(view.selected_tile)) { view.panel = Panel::Build; view.menu_index = 0; }
         else if (view.panel == Panel::Tile && world.building_at(view.selected_tile) < 0) return Request::Designate;
         else if (view.panel == Panel::Build) return Request::Plan;
+        else if (view.panel == Panel::Overview && view.overview_page == 2 && !world.chronicle.empty()) {
+            const auto index = world.chronicle.size() - 1 - std::min<std::size_t>(std::max(0, view.history_offset), world.chronicle.size() - 1);
+            const auto parent = world.chronicle[index].parent;
+            if (parent) for (std::size_t i = 0; i < world.chronicle.size(); ++i) if (world.chronicle[i].id == parent) {
+                view.history_offset = static_cast<int>(world.chronicle.size() - 1 - i); break;
+            }
+        }
         else if (view.panel == Panel::Overview && view.overview_page == 9) return Request::DirectorMode;
         else if (view.panel == Panel::Overview && view.overview_page < 2) return view.overview_page == 0 ? Request::ToggleDevelopment : Request::ToggleGrowth;
         else if (view.panel == Panel::Overview && (view.overview_page == 3 || view.overview_page == 8)) return Request::ToggleLearning;

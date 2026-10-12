@@ -70,7 +70,7 @@ void read_animal_brain(std::istream& in, Brain& b) {
 
 std::string World::serialize() const {
     std::ostringstream out;
-    out << std::setprecision(17) << "LIVING_VILLAGE 8\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
+    out << std::setprecision(17) << "LIVING_VILLAGE 9\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
     out << "GENERATION " << generator_version << ' ' << static_cast<int>(biome) << ' ' << static_cast<int>(geography) << ' ' << std::quoted(world_name) << '\n';
     out << wood_stock << ' ' << stone_stock << ' ' << auto_develop << ' ' << food_shortage << ' ' << simulation_speed << '\n';
     out << population_growth << ' ' << next_person_id << ' ' << next_migration_day << ' ' << next_birth_day << ' ' << births << ' ' << arrivals << ' ' << deaths << '\n';
@@ -148,6 +148,12 @@ std::string World::serialize() const {
     const auto& d = director;
     out << "DIRECTOR 1 " << static_cast<int>(d.mode) << ' ' << d.action << ' ' << d.bias << ' ' << d.decisions << ' ' << d.interventions << ' ' << d.pending_tick << ' ' << d.baseline << ' ' << d.expected << ' ' << d.outcome << ' ' << d.baseline_population << ' ' << d.pending << ' ' << std::quoted(d.reason) << '\n';
     write_animal_brain(out, d.brain);
+    out << "EMERGENCE 1 " << conservation_zones.size() << '\n';
+    for (Point center : conservation_zones) out << center.x << ' ' << center.y << '\n';
+    out << chronicle.size() << '\n';
+    for (const auto& r : chronicle) out << r.id << ' ' << r.parent << ' ' << std::quoted(r.evidence) << ' ' << r.location.x << ' ' << r.location.y << '\n';
+    out << statistics.size() << '\n';
+    for (const auto& r : statistics) { out << r.wildlife_recorded; for (int population : r.wildlife) out << ' ' << population; out << '\n'; }
     const std::string body = out.str(); return body + "CHECKSUM " + std::to_string(checksum(body)) + "\n";
 }
 
@@ -158,7 +164,7 @@ World World::deserialize(const std::string& data) {
     trailer >> expected; require(!trailer.fail()); trailer >> std::ws; require(trailer.eof());
     require(checksum(data.substr(0, footer)) == expected);
     std::istringstream in(data.substr(0, footer)); std::string magic; int version = 0;
-    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 8);
+    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 9);
     std::uint32_t seed = 0; in >> seed; World world(seed); world.chronicle.clear(); world.statistics.clear(); world.event_sequence = 0;
     in >> world.ticks >> world.food_stock;
     if (version >= 6) {
@@ -327,7 +333,7 @@ World World::deserialize(const std::string& data) {
         }
     } else {
         world.record_day();
-        for (const auto& message : world.events) world.chronicle.push_back({world.ticks, "Imported log: " + message.substr(0, 226)});
+        for (const auto& message : world.events) world.chronicle.push_back({world.ticks, "Imported log: " + message.substr(0, 226), 0, 0, "", {-1, -1}});
         world.event_sequence = world.chronicle.size();
     }
     if (version >= 7) {
@@ -370,6 +376,30 @@ World World::deserialize(const std::string& data) {
         d.mode = static_cast<DirectorMode>(mode); read_animal_brain(in, d.brain);
         require(d.pending == d.brain.active && (!d.pending || (mode == 2 && d.brain.action == d.action)) && (mode == 2 || d.bias == 0));
     }
+    if (version < 9) for (auto& record : world.statistics) { record.wildlife_recorded = false; record.wildlife.fill(0); }
+    if (version >= 9) {
+        std::string label; int schema = 0, count = 0; in >> label >> schema >> count;
+        require(label == "EMERGENCE" && schema == 1 && count >= 0 && count <= 16);
+        for (int n = 0; n < count; ++n) {
+            Point center = read_point(in);
+            require(world.passable(center.x, center.y) && std::find(world.conservation_zones.begin(), world.conservation_zones.end(), center) == world.conservation_zones.end());
+            world.conservation_zones.push_back(center);
+        }
+        in >> count; require(count == static_cast<int>(world.chronicle.size()));
+        std::uint64_t previous = 0;
+        for (auto& r : world.chronicle) {
+            in >> r.id >> r.parent >> std::quoted(r.evidence) >> r.location.x >> r.location.y;
+            require(r.id <= world.event_sequence && (r.id == 0 || r.id > previous) && (r.parent == 0 || r.parent < r.id) && r.evidence.size() <= 240
+                && ((r.location.x == -1 && r.location.y == -1) || (r.location.x >= 0 && r.location.x < 64 && r.location.y >= 0 && r.location.y < 64)));
+            if (r.id != 0) previous = r.id;
+        }
+        in >> count; require(count == static_cast<int>(world.statistics.size()));
+        for (auto& r : world.statistics) {
+            in >> r.wildlife_recorded; int total = 0;
+            for (int& population : r.wildlife) { in >> population; require(population >= 0 && population <= animal_limit); total += population; }
+            require(total <= animal_limit && (r.wildlife_recorded || total == 0));
+        }
+    }
     require(!in.fail()); in >> std::ws; require(in.eof()); return world;
 }
 
@@ -410,11 +440,17 @@ void save_atomic(const World& world, const std::filesystem::path& filename) {
 void export_history(const World& world, const std::filesystem::path& directory) {
     std::filesystem::create_directories(directory);
     auto quoted = [](const std::string& value) { std::string result = "\""; for (char c : value) { if (c == '\"') result += '\"'; result += c; } return result + '\"'; };
-    std::ostringstream events, days, people, habitat, wildlife;
-    events << "seed,tick,day,event\n";
-    for (const auto& r : world.chronicle) events << world.seed << ',' << r.tick << ',' << 1 + r.tick / 2400 << ',' << quoted(r.message) << '\n';
+    std::ostringstream events, days, people, habitat, wildlife, wildlife_days;
+    events << "seed,tick,day,event,id,parent,evidence,x,y\n";
+    for (const auto& r : world.chronicle) events << world.seed << ',' << r.tick << ',' << 1 + r.tick / 2400 << ',' << quoted(r.message) << ',' << r.id << ',' << r.parent << ',' << quoted(r.evidence) << ',' << r.location.x << ',' << r.location.y << '\n';
     days << "seed,day,population,children,food,wood,stone,buildings,technology,births,deaths,trades\n";
     for (const auto& r : world.statistics) days << world.seed << ',' << r.day << ',' << r.people << ',' << r.children << ',' << r.food << ',' << r.wood << ',' << r.stone << ',' << r.buildings << ',' << r.technology << ',' << r.births << ',' << r.deaths << ',' << r.trades << '\n';
+    wildlife_days << "seed,day,recorded,rabbits,deer,foxes,bees\n";
+    for (const auto& r : world.statistics) {
+        wildlife_days << world.seed << ',' << r.day << ',' << r.wildlife_recorded;
+        for (int count : r.wildlife) { wildlife_days << ','; if (r.wildlife_recorded) wildlife_days << count; }
+        wildlife_days << '\n';
+    }
     people << "seed,id,name,age,alive,role,home,partner,neural_updates,episodes,replayed,experiments,death_reason\n";
     for (const auto& p : world.villagers) people << world.seed << ',' << p.id << ',' << quoted(p.name) << ',' << p.age << ',' << p.alive() << ',' << quoted(occupation_name(p.occupation)) << ',' << p.home << ',' << p.partner << ',' << p.brain.updates << ',' << p.brain.episodes << ',' << p.brain.replay_updates << ',' << p.brain.experiments << ',' << quoted(p.death_reason) << '\n';
     habitat << "seed,day,x,y,terrain,elevation,soil_water,surface_water,groundwater,snowpack,fertility,organic,compaction,erosion,biomass,plant_age,plant_health,disease,tree_seeds,bush_seeds,nectar,pollination,fire\n";
@@ -423,7 +459,7 @@ void export_history(const World& world, const std::filesystem::path& directory) 
     }
     wildlife << "seed,day,id,parent,species,female,x,y,age,hunger,thirst,energy,health,mass,metabolism,immunity,fertility,disease,gestation,body_temperature,activity,reason,neural_updates,episodes\n";
     for (const auto& a : world.animals) wildlife << world.seed << ',' << world.day() << ',' << a.id << ',' << a.parent << ',' << quoted(species_name(a.species)) << ',' << a.female << ',' << a.x << ',' << a.y << ',' << a.age << ',' << a.hunger << ',' << a.thirst << ',' << a.energy << ',' << a.health << ',' << a.mass << ',' << a.metabolism << ',' << a.immunity << ',' << a.fertility << ',' << a.disease << ',' << a.gestation << ',' << a.body_temperature << ',' << quoted(animal_action_name(a.action)) << ',' << quoted(a.reason) << ',' << a.brain.updates << ',' << a.brain.episodes << '\n';
-    const std::pair<const char*, std::string> files[] = {{"village-history.csv", events.str()}, {"village-statistics.csv", days.str()}, {"residents.csv", people.str()}, {"ecology.csv", habitat.str()}, {"wildlife.csv", wildlife.str()}};
+    const std::pair<const char*, std::string> files[] = {{"village-history.csv", events.str()}, {"village-statistics.csv", days.str()}, {"residents.csv", people.str()}, {"ecology.csv", habitat.str()}, {"wildlife.csv", wildlife.str()}, {"wildlife-populations.csv", wildlife_days.str()}};
     for (const auto& file : files) { const auto path = directory / file.first; flush_file(path.string() + ".tmp", file.second); std::filesystem::rename(path.string() + ".tmp", path); }
     const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
     if (fd < 0) throw std::runtime_error("Cannot flush history directory");

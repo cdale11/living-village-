@@ -78,3 +78,7 @@ learning behavior.
 **Y → Ecology / Weather → A** cycles water, vegetation and traffic overlays and
 returns to the map. Repeat to return to the normal map. Legends explain the
 colors; permanent water remains recognizable.
+
+**Map → A tile → Y** toggles a 5x5 conservation area centered on the tile.
+**Y → Village History → D-pad up/down** browses event evidence.
+**Y → Wildlife Trends** shows species population history.

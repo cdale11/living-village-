@@ -105,7 +105,7 @@ int main() {
         old_header >> magic >> version >> old_seed >> old_ticks >> old_food >> old_rng;
         check(migrated.seed == old_seed && migrated.ticks == old_ticks && migrated.rng == old_rng, "Migration changed seed/time/random state");
         check(migrated.villagers[0].name == "Mira" && migrated.villagers[0].x == 31 && migrated.villagers[0].y == 30 && migrated.villagers[0].hunger == 15 && migrated.villagers[0].energy == 90, "Migration changed existing villager needs/position");
-        check(migrated.serialize().find("LIVING_VILLAGE 8\n") == 0, "Migrated save did not upgrade to version 8");
+        check(migrated.serialize().find("LIVING_VILLAGE 9\n") == 0, "Migrated save did not upgrade to version 9");
         check(World::deserialize(migrated.serialize()).serialize() == migrated.serialize(), "Migrated save did not round-trip");
         advance(migrated, 3000); check(migrated.alive_count() == 6 && migrated.buildings.size() > 2, "Migrated village failed to develop");
         construction.simulation_speed = 4;

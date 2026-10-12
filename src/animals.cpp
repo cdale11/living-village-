@@ -74,7 +74,7 @@ void World::update_animals(double seconds) {
         // No instant meat stock: carcasses feed scavengers and soil locally.
         if (a.brain.active && learning_enabled) a.brain.observe(a.brain.pending, -1);
         a.brain.active = false;
-        if (ecology.animal_deaths % 8 == 1) event(std::string(species_name(a.species)) + " died: " + cause);
+        if (ecology.animal_deaths % 8 == 1) event(std::string(species_name(a.species)) + " died: " + cause, std::string("Recorded death condition: ") + cause, location(a));
     };
     for (std::size_t index = 0; index < initial_count; ++index) {
         auto& a = animals[index]; if (a.health <= 0) continue;
@@ -113,7 +113,7 @@ void World::update_animals(double seconds) {
                     child.disease = a.disease * .2; ++ecology.animal_births; ++born;
                 }
                 a.last_birth_day = day(); a.hunger = std::min(100.0, a.hunger + born * 12);
-                if (born) event(std::string(species_name(a.species)) + " offspring born");
+                if (born) event(std::string(species_name(a.species)) + " offspring born", "Completed gestation; offspring placed near parent #" + std::to_string(a.id), location(a));
             }
         }
         a.decision_timer = std::max(0.0, a.decision_timer - seconds);

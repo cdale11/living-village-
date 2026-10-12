@@ -48,7 +48,7 @@ int World::building_at(Point point) const {
     return -1;
 }
 bool World::can_plan(Point point) const {
-    if (!passable(point.x, point.y) || tile(point.x, point.y).terrain != Terrain::Grass || point == camp || building_at(point) >= 0 || buildings.size() >= 64) return false;
+    if (conserved(point) || !passable(point.x, point.y) || tile(point.x, point.y).terrain != Terrain::Grass || point == camp || building_at(point) >= 0 || buildings.size() >= 64) return false;
     return !route(camp, point).empty();
 }
 bool World::plan(BuildingKind kind, Point point, int initiator) {
@@ -66,13 +66,13 @@ bool World::designate(Point point) {
     if (terrain != Terrain::Tree && terrain != Terrain::Stone && terrain != Terrain::Bush) return false;
     auto existing = std::find(gather_orders.begin(), gather_orders.end(), point);
     if (existing != gather_orders.end()) { gather_orders.erase(existing); return true; }
-    if (gather_orders.size() >= 16) return false;
+    if (conserved(point) || gather_orders.size() >= 16) return false;
     gather_orders.push_back(point);
     event("Gathering area designated"); return true;
 }
 void World::update_needs() {
-    if (!food_shortage && food_stock < 4) { food_shortage = true; event("Shared food is running low"); }
-    else if (food_shortage && food_stock >= 12) { food_shortage = false; event("Food stocks have recovered"); }
+    if (!food_shortage && food_stock < 4) { food_shortage = true; event("Shared food is running low", "Shared store dropped below four meals: " + std::to_string(food_stock)); }
+    else if (food_shortage && food_stock >= 12) { food_shortage = false; event("Food stocks have recovered", "Shared store reached at least twelve meals: " + std::to_string(food_stock)); }
     if (!auto_develop || alive_count() == 0) return;
     int pending = 0, future_shelter = shelter_capacity(), farms = 0, stores = 0;
     for (const auto& b : buildings) {

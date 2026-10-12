@@ -94,6 +94,8 @@ bool World::research(Villager& p, Building& b, double dt) {
 void World::record_day() {
     DailyRecord record; record.day = day(); record.people = alive_count(); record.children = child_count();
     record.food = food_stock; record.wood = wood_stock; record.stone = stone_stock; record.technology = technology_level;
+    record.wildlife_recorded = true;
+    for (const auto& animal : animals) if (animal.health > 0) ++record.wildlife[static_cast<int>(animal.species)];
     record.births = births; record.deaths = deaths; record.trades = trade_count;
     for (const auto& b : buildings) if (b.complete) ++record.buildings;
     if (!statistics.empty() && statistics.back().day == record.day) statistics.back() = record;

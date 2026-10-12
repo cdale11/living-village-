@@ -178,6 +178,10 @@ void Renderer::draw(const World& world, const View& view) {
             }
         }
     }
+    for (Point center : world.conservation_zones) {
+        outline(px(center.x - 2), py(center.y - 2), size * 5, size * 5, {105, 227, 209, 210});
+        outline(px(center.x), py(center.y), size, size, {105, 227, 209, 255});
+    }
     for (Point order : world.gather_orders) {
         outline(px(order.x - 2), py(order.y - 2), size * 5, size * 5, {191, 218, 127, 180});
         outline(px(order.x), py(order.y), size, size, {213, 238, 152, 255});
@@ -447,9 +451,48 @@ void Renderer::draw(const World& world, const View& view) {
                 break;
             }
             case Panel::Overview: {
-                const char* titles[] = {"VILLAGE LIFE", "POPULATION", "VILLAGE HISTORY", "NEURAL LEARNING", "ECONOMY / HISTORY", "SOUND / VIBRATION", "ECOLOGY / WEATHER", "WILDLIFE", "AGENT DIAGNOSTICS", "NEURAL DIRECTOR"};
-                text(102, 80, titles[std::clamp(view.overview_page, 0, 9)], cream, 3);
-                if (view.overview_page == 0) {
+                const char* titles[] = {"VILLAGE LIFE", "POPULATION", "VILLAGE HISTORY", "NEURAL LEARNING", "ECONOMY / HISTORY", "SOUND / VIBRATION", "ECOLOGY / WEATHER", "WILDLIFE", "AGENT DIAGNOSTICS", "NEURAL DIRECTOR", "WILDLIFE TRENDS"};
+                text(102, 80, titles[std::clamp(view.overview_page, 0, 10)], cream, 3);
+                if (view.overview_page == 2) {
+                    if (world.chronicle.empty()) text(102, 140, "No recorded events", muted);
+                    else {
+                        const auto index = world.chronicle.size() - 1 - std::min<std::size_t>(std::max(0, view.history_offset), world.chronicle.size() - 1);
+                        const auto& r = world.chronicle[index];
+                        text(102, 118, "Day " + std::to_string(1 + r.tick / 2400) + " | Event #" + std::to_string(r.id), muted);
+                        text(102, 146, r.message.substr(0, 100), cream, 2, 504);
+                        text(102, 214, r.evidence.empty() ? "Evidence not recorded for this event" : "RECORDED: " + r.evidence, muted, 1, 504);
+                        if (r.parent) {
+                            const auto parent = std::find_if(world.chronicle.begin(), world.chronicle.end(), [&](const HistoryRecord& p) { return p.id == r.parent; });
+                            text(102, 264, "Contributing event #" + std::to_string(r.parent), cream);
+                            text(102, 296, parent == world.chronicle.end() ? "Earlier record outside retained history" : parent->message.substr(0, 150), muted, 1, 504);
+                        }
+                        if (r.location.x >= 0) text(102, 326, "Location " + std::to_string(r.location.x) + "/" + std::to_string(r.location.y), muted);
+                    }
+                    text(102, 354, "UP/DOWN EVENTS | A TRACE CONTRIBUTING EVENT", muted, 1);
+                } else if (view.overview_page == 10) {
+                    std::array<int, 4> populations{};
+                    for (const auto& a : world.animals) if (a.health > 0) ++populations[static_cast<int>(a.species)];
+                    const SDL_Color colors[] = {{242,210,152,255},{118,211,161,255},{239,139,98,255},{224,199,72,255}};
+                    for (int species = 0; species < 4; ++species)
+                        text(102, 120 + species * 24, std::string(species_name(static_cast<Species>(species))) + " now: " + std::to_string(populations[species]), colors[species]);
+                    outline(102, 230, 480, 88, muted);
+                    std::size_t observations = 0;
+                    for (const auto& record : world.statistics) if (record.wildlife_recorded) ++observations;
+                    for (int species = 0; species < 4; ++species) {
+                        sdl.SetRenderDrawColor(renderer, colors[species].r, colors[species].g, colors[species].b, 255);
+                        int last_x = -1, last_y = 0;
+                        for (std::size_t i = 0; i < world.statistics.size(); ++i) {
+                            const auto& record = world.statistics[i]; if (!record.wildlife_recorded) { last_x = -1; continue; }
+                            const int x = 104 + static_cast<int>(i * 475 / std::max<std::size_t>(1, world.statistics.size() - 1));
+                            const int y = 315 - record.wildlife[species] * 80 / animal_limit;
+                            if (last_x >= 0) sdl.RenderDrawLine(renderer, last_x, last_y, x, y);
+                            else rect(x, y, 2, 2, colors[species]);
+                            last_x = x; last_y = y;
+                        }
+                    }
+                    text(102, 334, std::to_string(observations) + " observed days | chart scale 0-48", muted, 1);
+                    text(102, 354, "OLD DAYS WITHOUT OBSERVATIONS ARE LEFT BLANK", muted, 1);
+                } else if (view.overview_page == 0) {
                     int finished = 0; for (const auto& b : world.buildings) if (b.complete) ++finished;
                     text(102, 122, world.world_name, cream);
                     text(102, 156, "Built " + std::to_string(finished) + " | Plans " + std::to_string(world.buildings.size() - finished), muted);
@@ -624,6 +667,8 @@ void Renderer::draw(const World& world, const View& view) {
                 const char* terrain[] = {"Grass", "Tree", "Stone", "Water", "Berry bush"};
                 text(102, 80, "TILE " + std::to_string(at.x) + "/" + std::to_string(at.y), cream, 3);
                 text(102, 122, std::string(terrain[static_cast<int>(cell.terrain)]) + " | Elevation " + decimal(cell.elevation), muted);
+                const bool center = std::find(world.conservation_zones.begin(), world.conservation_zones.end(), at) != world.conservation_zones.end();
+                text(102, 350, center ? "Y: REMOVE THIS 5X5 CONSERVATION AREA" : world.conserved(at) ? "PROTECTED | Y: ADD OVERLAPPING AREA" : "Y: PROTECT 5X5 | NATURAL HARVEST/NEW PLANS STOP", {105,227,209,255}, 1);
                 const int id = world.building_at(at);
                 if (id >= 0) {
                     const auto& b = world.buildings[id];
@@ -658,7 +703,7 @@ void Renderer::draw(const World& world, const View& view) {
                     if (cell.loose_food + cell.loose_wood + cell.loose_stone > 0) text(102, 198, "Loose F " + std::to_string(cell.loose_food) + " W " + std::to_string(cell.loose_wood) + " S " + std::to_string(cell.loose_stone), muted);
                     const bool resource = cell.terrain == Terrain::Tree || cell.terrain == Terrain::Stone || cell.terrain == Terrain::Bush;
                     const bool designated = std::find(world.gather_orders.begin(), world.gather_orders.end(), at) != world.gather_orders.end();
-                    text(102, 232, world.can_plan(at) ? "A: PLACE A CONSTRUCTION PLAN" : resource ? (designated ? "A: CANCEL GATHERING AREA" : "A: DESIGNATE GATHERING AREA") : "Plans need reachable empty grass", muted, 2, 504);
+                    text(102, 232, world.conserved(at) ? "Protected: natural harvest and new plans restricted" : world.can_plan(at) ? "A: PLACE A CONSTRUCTION PLAN" : resource ? (designated ? "A: CANCEL GATHERING AREA" : "A: DESIGNATE GATHERING AREA") : "Plans need reachable empty grass", muted, 2, 504);
                     text(102, 278, "Water " + decimal(cell.moisture * 100) + "% | Nutrients " + decimal(cell.fertility * 100) + "%", muted);
                     text(102, 302, "Health " + decimal(cell.plant_health) + " Age " + std::to_string(static_cast<int>(cell.plant_age)) + "d Disease " + decimal(cell.disease * 100) + "%", muted);
                     text(102, 326, "Flood " + decimal(cell.surface_water) + " Erosion " + decimal(cell.erosion * 100) + "% Wear " + decimal(cell.compaction * 100) + "%", muted);

@@ -129,3 +129,13 @@ on H700) for independent tile hydrology calculations with ordered reductions.
 The first observation overlays expose real soil water, vegetation condition and
 traffic compaction. These are initial steps toward the broader emergence tools;
 causal event links, conservation rules and species population histories remain.
+
+## Observable emergence milestone
+
+Implemented bounded 5x5 conservation areas with actual natural-harvest/new-plan
+restrictions; controller event-evidence inspection with explicit contributing
+links for instrumented events; daily species counts/charts and CSV export.
+Version-9 saves retain these records and migrate old worlds without invented
+history. See [observable emergence](observable-emergence.md) for limits. Remaining:
+full causal graphs, conservation outcome comparisons, pinned residents,
+knowledge/relationship overlays and learning-outcome evaluation.

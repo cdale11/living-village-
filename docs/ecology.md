@@ -123,11 +123,11 @@ state or building condition/maintenance. Map sprites show wildlife, seedlings,
 trails, standing water, snow and fires. Weather and meaningful ecology events
 appear in the village log. Original procedural art uses no external assets.
 
-Save version 8 includes all tile states, weather, ecology PRNG, counters, animal
+Save version 9 includes all tile states, weather, ecology PRNG, counters, animal
 biology, genetics, pregnancy, intentions, neural weights/replay and maintenance.
 Versions 1–6 migrate by initializing ecology around the saved terrain while
 preserving residents, existing neural models, buildings and resources. Saves are bounded to 8 MiB, including maximum populations, replay and routes. Older
-executables cannot read version 8. Keep the whole saves folder when upgrading.
+executables cannot read version 9. Keep the whole saves folder when upgrading.
 
 `make test` includes water balance/runoff, infiltration/traffic, snowmelt, drought,
 forest recruitment/mortality, fire, grazing, finite nectar/pollination, predation,

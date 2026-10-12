@@ -97,10 +97,17 @@ struct Villager {
     bool child() const { return age < 16; }
 };
 
-struct HistoryRecord { std::uint64_t tick = 0; std::string message; };
+struct HistoryRecord {
+    std::uint64_t tick = 0; std::string message;
+    std::uint64_t id = 0, parent = 0;
+    std::string evidence;
+    Point location{-1, -1};
+};
 struct DailyRecord {
     int day = 1, people = 0, children = 0, food = 0, wood = 0, stone = 0, buildings = 0, technology = 0;
     std::uint64_t births = 0, deaths = 0, trades = 0;
+    std::array<int, 4> wildlife{};
+    bool wildlife_recorded = false;
 };
 enum class Weather : int { Clear, Rain, Storm, Snow, Heatwave };
 enum class Species : int { Rabbit, Deer, Fox, Bee };
@@ -156,6 +163,7 @@ public:
     std::vector<Villager> villagers;
     std::vector<Building> buildings;
     std::vector<Point> gather_orders;
+    std::vector<Point> conservation_zones;
     std::deque<std::string> events;
     std::mt19937 rng;
     std::mt19937 ecology_rng;
@@ -172,7 +180,10 @@ public:
     std::vector<Point> route(Point from, Point to) const;
     void update(double dt = fixed_step);
     void recruit_wildlife();
-    void event(const std::string& message);
+    void event(const std::string& message, const std::string& evidence = "", Point location = {-1, -1}, std::uint64_t parent = 0);
+    bool conserved(Point point) const;
+    bool toggle_conservation(Point center);
+    std::uint64_t weather_cause() const;
     int day() const { return 1 + static_cast<int>(ticks / 2400); }
     double daylight() const;
     int food_capacity() const;
@@ -203,7 +214,7 @@ public:
     void update_animals(double seconds);
     void update_weather();
     bool spawn_animal(Species species, Point place, int parent = -1);
-    bool ignite(Point place);
+    bool ignite(Point place, std::uint64_t cause = 0);
     void trample(Point place, double amount = 1);
     int repair_wood_needed(const Building& site) const;
     int repair_stone_needed(const Building& site) const;

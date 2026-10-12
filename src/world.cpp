@@ -116,6 +116,10 @@ void World::decide(Villager& p) {
     std::string reason = "Curiosity " + std::to_string(static_cast<int>(p.curiosity * 100)) + "; finding resources";
     auto consider = [&](Goal goal, double utility, Point place, const std::string& why, int id = -1) {
         if (!passable(place.x, place.y)) return;
+        if (conserved(place) && (goal == Goal::Forage || goal == Goal::GatherWood || goal == Goal::CollectStone)) {
+            const auto& cell = tile(place.x, place.y);
+            if ((goal == Goal::Forage ? cell.loose_food : goal == Goal::GatherWood ? cell.loose_wood : cell.loose_stone) == 0) return;
+        }
         utility += work_bias(p, goal);
         const double exploratory = experiment == static_cast<int>(goal) ? 8 : 0;
         const auto input = observations(p, goal, place, utility);
@@ -130,7 +134,8 @@ void World::decide(Villager& p) {
         for (Point point : memory) {
             const auto& cell = tile(point.x, point.y);
             const int amount = kind == 0 ? cell.food + cell.loose_food : kind == 1 ? cell.wood + cell.loose_wood : cell.stone + cell.loose_stone;
-            if (amount > 0) available.push_back(point);
+            const int loose = kind == 0 ? cell.loose_food : kind == 1 ? cell.loose_wood : cell.loose_stone;
+            if (amount > 0 && (!conserved(point) || loose > 0)) available.push_back(point);
         }
         std::stable_sort(available.begin(), available.end(), [&](Point a, Point b) { return distance(here, a) < distance(here, b); });
         for (std::size_t i = 0; i < std::min<std::size_t>(available.size(), 4); ++i)
@@ -303,6 +308,7 @@ void World::execute(Villager& p, double dt) {
         auto& cell = tile(here.x, here.y);
         int* loose = p.goal == Goal::Forage ? &cell.loose_food : p.goal == Goal::GatherWood ? &cell.loose_wood : &cell.loose_stone;
         int* natural = p.goal == Goal::Forage ? &cell.food : p.goal == Goal::GatherWood ? &cell.wood : &cell.stone;
+        if (*loose == 0 && conserved(here)) { finish(); return; }
         int* available = *loose > 0 ? loose : natural;
         int* inventory = p.goal == Goal::Forage ? &p.food : p.goal == Goal::GatherWood ? &p.wood : &p.stone;
         bool space = p.goal == Goal::Forage ? p.food < 4 : p.wood + p.stone < 6;
@@ -369,7 +375,7 @@ void World::execute(Villager& p, double dt) {
                 reward(.16 * (wood + stone) * p.cooperation); practice_work(p, p.goal, wood + stone);
                 site->contribute(p.id);
                 remember(p, std::string("Supplied ") + building_name(site->kind));
-                event(p.name + " delivers " + std::to_string(wood) + " wood / " + std::to_string(stone) + " stone to " + building_name(site->kind));
+                event(p.name + " delivers " + std::to_string(wood) + " wood / " + std::to_string(stone) + " stone to " + building_name(site->kind), "Goal selection: " + p.reason, site->position);
                 if (site->initiator >= 0 && site->initiator != p.id) {
                     p.relationships[site->initiator] = std::min(100.0, p.relationships[site->initiator] + 1);
                     if (auto* recipient = person(site->initiator)) {
@@ -391,7 +397,10 @@ void World::execute(Villager& p, double dt) {
             site->work = building_cost(site->kind).work; site->complete = true;
             if (site->kind == BuildingKind::Campfire) site->fuel = 240;
             reward(.35);
-            event(std::string("Completed: ") + building_name(site->kind));
+            std::uint64_t delivery_cause = 0;
+            for (auto it = chronicle.rbegin(); it != chronicle.rend(); ++it)
+                if (it->location == site->position && it->message.find(" delivers ") != std::string::npos) { delivery_cause = it->id; break; }
+            event(std::string("Completed: ") + building_name(site->kind), "Required materials delivered and construction work completed", site->position, delivery_cause);
             remember(p, std::string("Finished ") + building_name(site->kind)); finish();
         }
     } else if (p.goal == Goal::CollectMeal && here == camp && p.action_timer >= 1) {
@@ -478,10 +487,10 @@ void World::update(double dt) {
     if (ticks % 2400 == 0) { update_population(); record_day(); }
     prune_history();
 }
-void World::event(const std::string& message) {
+void World::event(const std::string& message, const std::string& evidence, Point location, std::uint64_t parent) {
     if (event_sequence < 100000000000ULL) ++event_sequence;
     if (chronicle.size() >= 512) chronicle.pop_front();
-    chronicle.push_back({ticks, message});
+    chronicle.push_back({ticks, message, event_sequence, parent, evidence, location});
     if (events.size() >= 24) events.pop_front();
     events.push_back("Day " + std::to_string(day()) + ": " + message);
 }
