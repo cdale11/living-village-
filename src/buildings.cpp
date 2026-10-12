@@ -81,9 +81,11 @@ void World::update_needs() {
         if (b.kind == BuildingKind::FoodStorage) ++stores;
     }
     if (pending >= 2) return;
+    if (construction_priority == 3 && std::any_of(buildings.begin(), buildings.end(), [](const Building& b) { return b.complete && b.condition < 85; })) return;
     const int wanted_shelter = std::min(population_limit, alive_count() + (population_growth && food_stock >= std::max(12, alive_count() * 2) ? 4 : 0));
     BuildingKind needed;
-    if (food_stock < 12 && farms < (alive_count() + 2) / 3) needed = BuildingKind::Farm;
+    if (construction_priority == 2 && future_shelter < alive_count()) needed = BuildingKind::Shelter;
+    else if (food_stock < food_target() && farms < (alive_count() + 2) / 3) needed = BuildingKind::Farm;
     else if (future_shelter < wanted_shelter) needed = BuildingKind::Shelter;
     else if (food_stock >= food_capacity() * 3 / 4 && stores == 0) needed = BuildingKind::FoodStorage;
     else if (knowledge >= 8 && food_stock >= alive_count() * 2 && std::none_of(buildings.begin(), buildings.end(), [](const Building& b) { return b.kind == BuildingKind::Workshop; })) needed = BuildingKind::Workshop;

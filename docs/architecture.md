@@ -7,7 +7,7 @@ recipes, capacity/effect queries, placement validation and shared need-driven
 planning. `population.cpp` handles homes, households, births, arrivals, ageing
 and deaths. `brain.cpp` implements the per-resident MLP and bounded SGD;
 `learning.cpp` extracts observations and credits action outcomes. `saves.cpp`
-records full state and migrates version 1/2/3/4/5/6/7/8 saves to version 9. Headless runs and tests use the same simulation as the graphical game.
+records full state and migrates version 1/2/3/4/5/6/7/8/9 saves to version 10. Headless runs and tests use the same simulation as the graphical game.
 
 `ecology.cpp` updates weather, hydrology, plant/soil biology, hazards and maintenance
 every ten fixed ticks. `animals.cpp` updates bounded wildlife, reproduction and

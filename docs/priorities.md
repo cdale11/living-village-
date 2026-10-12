@@ -135,7 +135,18 @@ causal event links, conservation rules and species population histories remain.
 Implemented bounded 5x5 conservation areas with actual natural-harvest/new-plan
 restrictions; controller event-evidence inspection with explicit contributing
 links for instrumented events; daily species counts/charts and CSV export.
-Version-9 saves retain these records and migrate old worlds without invented
+Version-10 saves retain these records and migrate old worlds without invented
 history. See [observable emergence](observable-emergence.md) for limits. Remaining:
 full causal graphs, conservation outcome comparisons, pinned residents,
 knowledge/relationship overlays and learning-outcome evaluation.
+
+## Lives and outcomes milestone
+
+Implemented pinned residents with bounded deceased retention, real life records,
+outgoing trust/resource-memory views, physical skill teaching, reserve/project
+policies, independent behavioral outcome metrics and paired headless learning
+comparisons. Conservation centers expose measured baselines/current conditions.
+See [lives and learning](lives-and-learning.md) for semantics and limits.
+Remaining depth: full causal graphs, controlled conservation experiments, richer
+plant species/succession, drinking-water/food preservation systems, collective
+project proposals/abandonment, and broader long-term learning evaluation.

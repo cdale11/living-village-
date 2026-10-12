@@ -106,7 +106,7 @@ void World::decide(Villager& p) {
     }
     Goal chosen = Goal::Explore;
     Point destination = here; int target = -1;
-    const bool can_experiment = learning_enabled && !p.child() && p.hunger < 60 && p.energy >= 35 && p.health >= 80 && food_stock >= alive_count();
+    const bool can_experiment = learning_enabled && exploration_enabled && !p.child() && p.hunger < 60 && p.energy >= 35 && p.health >= 80 && food_stock >= alive_count();
     const int experiment = p.brain.exploration(can_experiment);
     double chosen_exploration = experiment == static_cast<int>(chosen) ? 8 : 0;
     double chosen_base = 25 + p.curiosity * 15;
@@ -120,13 +120,19 @@ void World::decide(Villager& p) {
             const auto& cell = tile(place.x, place.y);
             if ((goal == Goal::Forage ? cell.loose_food : goal == Goal::GatherWood ? cell.loose_wood : cell.loose_stone) == 0) return;
         }
+        if (id >= 0 && id < static_cast<int>(buildings.size()) && (goal == Goal::Build || goal == Goal::DeliverMaterials || goal == Goal::TakeMaterials)) {
+            const auto& project = buildings[id];
+            if (construction_priority == 1 && project.kind == BuildingKind::Farm) utility += 18;
+            if (construction_priority == 2 && project.kind == BuildingKind::Shelter) utility += 18;
+            if (construction_priority == 3 && project.complete && project.condition < 85) utility += 18;
+        }
         utility += work_bias(p, goal);
         const double exploratory = experiment == static_cast<int>(goal) ? 8 : 0;
         const auto input = observations(p, goal, place, utility);
         const double adjustment = 18 * p.brain.evaluate(input);
         if (utility + adjustment + exploratory <= highest) return;
         auto path = route(here, place);
-        if (!(here == place) && path.empty()) return;
+        if (!(here == place) && path.empty()) { ++p.outcomes.unreachable_candidates; return; }
         highest = utility + adjustment + exploratory; chosen_exploration = exploratory; chosen_base = utility; chosen_adjustment = adjustment; chosen_input = input; chosen = goal; destination = place; target = id; reason = why;
     };
     auto resource = [&](const std::vector<Point>& memory, int kind) {
@@ -143,14 +149,14 @@ void World::decide(Villager& p) {
         return Point{-1, -1};
     };
     const double urgency = p.hunger >= 75 ? 55 : 0;
-    const double forage_score = (p.food == 0 ? 45 : 0) + p.hunger * .5 + (food_stock < 12 ? 25 : 0) + urgency;
+    const double forage_score = (p.food == 0 ? 45 : 0) + p.hunger * .5 + (food_stock < food_target() ? 25 : 0) + urgency;
     if (p.food < 4) {
-        consider(Goal::Forage, forage_score, resource(p.known_food, 0), food_stock < 12 ? "Shared food low; gathering known berries" : "Gathering known berries for meals");
+        consider(Goal::Forage, forage_score, resource(p.known_food, 0), food_stock < food_target() ? "Shared food low; gathering known berries" : "Gathering known berries for meals");
         for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Farm && b.food > 0)
             consider(Goal::TendFarm, forage_score + 8 + p.farm_skill * 10, b.position, "Ripe farm; hunger and shared food needs", b.id);
     }
     if (p.food > 1 && food_stock < food_capacity())
-        consider(Goal::DeliverFood, 55 + p.cooperation * 35 + (food_stock < 8 ? 40 : 0), camp, "Sharing carried food; cooperation " + std::to_string(static_cast<int>(p.cooperation * 100)));
+        consider(Goal::DeliverFood, 55 + p.cooperation * 35 + (food_stock < food_target()*2/3 ? 40 : 0), camp, "Sharing carried food; cooperation " + std::to_string(static_cast<int>(p.cooperation * 100)));
     if (!p.child() && p.wood + p.stone > 0 && ((p.wood > 0 && wood_stock < material_capacity()) || (p.stone > 0 && stone_stock < material_capacity())))
         consider(Goal::StoreMaterials, 70 + p.cooperation * 15, camp, "Returning spare materials to shared stock");
     for (const auto& b : buildings) {
@@ -270,6 +276,10 @@ void World::decide(Villager& p) {
 void World::remember(Villager& person, const std::string& experience) {
     if (person.history.size() >= 6) person.history.pop_front();
     person.history.push_back(experience);
+    if (experience != "Ate one food" && experience.find("Harvested ") != 0 && experience.find("Stored spare") != 0 && experience.find("Spent time") != 0 && !(experience.find("Shared ") == 0 && experience.find(" food at camp") != std::string::npos)) {
+        if (person.life.size() >= 64) person.life.pop_front();
+        person.life.push_back({ticks, experience});
+    }
 }
 void World::execute(Villager& p, double dt) {
     if (!p.path.empty()) {
@@ -312,8 +322,9 @@ void World::execute(Villager& p, double dt) {
         int* available = *loose > 0 ? loose : natural;
         int* inventory = p.goal == Goal::Forage ? &p.food : p.goal == Goal::GatherWood ? &p.wood : &p.stone;
         bool space = p.goal == Goal::Forage ? p.food < 4 : p.wood + p.stone < 6;
-        if (*available == 0 && space) resource_conflict(p);
+        if (*available == 0 && space) { ++p.outcomes.empty_harvests; resource_conflict(p); }
         if (*available > 0 && space) {
+            ++p.outcomes.units[static_cast<int>(p.goal)];
             --*available; ++*inventory; reward(p.goal == Goal::Forage ? .12 : .10); practice_work(p, p.goal, 1); p.gather_skill = std::min(1.0, p.gather_skill + .005);
             if (ecology_enabled && available == natural && p.goal == Goal::GatherWood) { cell.biomass = std::max(.05, cell.biomass - .08); cell.plant_health = std::max(1.0, cell.plant_health - 1); }
         }
@@ -323,7 +334,7 @@ void World::execute(Villager& p, double dt) {
         if (site && site->complete && here == site->position) {
             int amount = std::min(4 - p.food, site->food);
             site->food -= amount; p.food += amount;
-            if (amount > 0) { reward(.12 * amount); practice_work(p, p.goal, amount); p.farm_skill = std::min(1.0, p.farm_skill + .01); remember(p, "Harvested " + std::to_string(amount) + " farm food"); }
+            if (amount > 0) { p.outcomes.units[static_cast<int>(Goal::TendFarm)] += amount; reward(.12 * amount); practice_work(p, p.goal, amount); p.farm_skill = std::min(1.0, p.farm_skill + .01); remember(p, "Harvested " + std::to_string(amount) + " farm food"); }
         }
         finish();
     } else if (p.goal == Goal::DeliverFood && here == camp && p.action_timer >= 1) {
@@ -478,6 +489,7 @@ void World::update(double dt) {
         if (p.hunger >= 99) p.health = std::max(0.0, p.health - dt * .25);
         else p.health = std::min(100.0, p.health + dt * .02);
         if (!p.alive()) { kill(p.id, "Hunger"); continue; }
+        p.outcomes.seconds[static_cast<int>(p.goal)] += dt;
         p.decision_timer = std::max(0.0, p.decision_timer - dt);
         // Carrying a meal permits immediate survival action during a long trip.
         if (p.hunger >= 85 && p.food > 0 && p.goal != Goal::Eat) { p.path.clear(); p.decision_timer = 0; }

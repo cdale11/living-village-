@@ -62,7 +62,7 @@ for display-session requirements and the 192-case headless survey command.
 
 This release adds online neural learning to autonomous survival, village development, households, controller menus and persistent saves. Each resident's MLP learns from actual action outcomes and changes candidate scores within the simulation's survival and validity rules. Buildings consume delivered resources and work; farms renew food, shelters improve rest, and storage expands capacity. Seasonal/rain effects change resource growth. Households form from mutual relationships; children inherit traits and receive physically delivered meals. Conditional immigration, ageing and deaths allow generational turnover, with up to 20 living villagers. Residents acquire and change work specializations, share meals, barter surplus food/materials, dispute claims and reconcile. Workshops unlock two supplied technology upgrades. Original sound effects, weather/daylight ambience and optional vibration are configurable. Audio negotiates/converts to the device format; vibration supports SDL and Linux force-feedback fallback. There is no offline progression.
 
-To upgrade, replace only `livingvillage/bin/living-village` and keep saves/config. Version 1–8 saves upgrade automatically to version 9, preserving existing state. Older binaries cannot read version 9 saves. Keep a separate backup before upgrading.
+To upgrade, replace only `livingvillage/bin/living-village` and keep saves/config. Version 1–9 saves upgrade automatically to version 10, preserving existing state. Older binaries cannot read version 10 saves. Keep a separate backup before upgrading.
 
 See [ecology and wildlife](docs/ecology.md) for biological rules, hazard mechanics,
 maintenance and model limits. Y's last two pages show Ecology/weather and Wildlife;
@@ -138,9 +138,13 @@ Original code, generated graphics and procedural audio: MIT. SDL2 headers: zlib,
 
 The offline [neural director](docs/director.md) is available through **Y → Neural
 Director → A**. Observer is the default; Adaptive learns from delayed outcomes of
-bounded weather opportunities. Version-9 saves migrate versions 1–8. Back up
+bounded weather opportunities. Version-10 saves migrate versions 1–9. Back up
 saves before upgrading; previous binaries cannot read the new format.
 
 [Observable emergence](docs/observable-emergence.md): **Map → A tile → Y** toggles
 conservation; **Y → Village History** browses recorded evidence (**A** traces a
 contributing event); **Y → Wildlife Trends** displays daily species populations.
+
+[Lives and learning](docs/lives-and-learning.md) adds saved pins/life histories,
+trust/memory views, physical teaching, village policies, conservation baselines
+and behavioral outcome metrics with headless comparison commands.

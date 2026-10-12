@@ -51,6 +51,7 @@ double World::social_exchange(Villager& p, Villager& other) {
             event(p.name + " shares " + std::to_string(gained) + " resource locations with " + other.name);
         }
     }
+    if (teach(p, other) || teach(other, p)) reward += .05;
     return reward;
 }
 void World::resource_conflict(Villager& p) {

@@ -12,7 +12,7 @@ int main() {
     auto& p = w.villagers.front();
     for (auto& other : w.villagers) other.decision_timer = 10;
     auto gather = [&] {
-        p.brain.active = false;
+        p.brain.active = false; p.outcomes.pending_measured = false;
         p.x = source.x; p.y = source.y; p.goal = Goal::GatherWood; p.path.clear(); p.destination = source;
         p.target_id = -1; p.action_timer = 0; p.decision_timer = 5;
         for (int n = 0; n < 21; ++n) w.update();

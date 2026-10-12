@@ -68,7 +68,7 @@ void World::update_director() {
     }
     // Rare, safe experiments use only the director's saved PRNG.
     bool experimenting = false;
-    if (d.mode == DirectorMode::Adaptive && learning_enabled && safe) {
+    if (d.mode == DirectorMode::Adaptive && learning_enabled && exploration_enabled && safe) {
         const int experiment = d.brain.exploration(true);
         if (experiment >= 0) { chosen = experiment % 3; experimenting = true; ++d.brain.experiments; }
     }

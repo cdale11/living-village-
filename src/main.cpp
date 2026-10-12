@@ -27,6 +27,7 @@ struct Options {
     village::Biome biome = village::Biome::Temperate;
     village::Geography geography = village::Geography::Ponds;
     int director_mode = -1, threads = 0;
+    bool freeze_learning = false, no_exploration = false;
     std::string world_name = "New Village";
     int frames = 0, steps = 24000, benchmark_villagers = 0, starting_food = 18, starting_population = 6;
     std::string save_dir = "saves", screenshot, art_ports;
@@ -43,6 +44,8 @@ Options options(int argc, char** argv) {
         auto value = [&]() { if (++i >= argc) throw std::runtime_error("Missing value for " + arg); return std::string(argv[i]); };
         if (arg == "--fullscreen") result.fullscreen = true;
         else if (arg == "--ai-diagnostics") result.ai_diagnostics = true;
+        else if (arg == "--freeze-learning") result.freeze_learning = true;
+        else if (arg == "--no-exploration") result.no_exploration = true;
         else if (arg == "--threads") { result.threads = std::stoi(value()); if (result.threads < 1 || result.threads > 8) throw std::runtime_error("Threads must be 1 to 8"); }
         else if (arg == "--director") {
             const auto mode = value();
@@ -79,6 +82,7 @@ Options options(int argc, char** argv) {
                       << "--world-name NAME --biome temperate|woodland|meadow|arid|taiga|rainforest|wetland|savanna\n"
                       << "--layout ponds|river|island|coast|highlands|lakes|peninsula|archipelago|delta|canyon|valley|plains\n"
                       << "--population 2..20 --starting-food 6|18|30 --ai-diagnostics (live panel)\n"
+                      << "--freeze-learning --no-exploration (comparison options)\n"
                       << "--threads 1..8 (default: detected CPUs, capped at eight)\n"
                       << "--director off|observer|adaptive (temporary headless mode or saved override)\n"
                       << "--register-port-art PORTS_DIRECTORY (no SDL needed)\n"
@@ -89,6 +93,7 @@ Options options(int argc, char** argv) {
         } else throw std::runtime_error("Unknown option " + arg);
     }
     if ((result.benchmark_villagers != 0 && (result.benchmark_villagers < 6 || result.benchmark_villagers > 20)) || result.steps < 1 || result.steps > 100000000 || result.frames < 0) throw std::runtime_error("Steps/frames out of range");
+    if ((result.freeze_learning || result.no_exploration) && !result.headless) throw std::runtime_error("Learning comparison options require --headless");
     return result;
 }
 }
@@ -102,6 +107,8 @@ int main(int argc, char** argv) {
         std::cout << "Simulation CPU threads: " << worker_count() << " (including main thread)\n";
         World world(config.seed, config.biome, config.geography, config.starting_population); world.world_name = config.world_name; world.food_stock = config.starting_food;
         if (config.director_mode >= 0) world.director.mode = static_cast<DirectorMode>(config.director_mode);
+        if (config.freeze_learning) world.learning_enabled = false;
+        if (config.no_exploration) world.exploration_enabled = false;
         if (config.benchmark_villagers) {
             world.population_growth = false;
             while (static_cast<int>(world.villagers.size()) < config.benchmark_villagers) {
@@ -119,6 +126,12 @@ int main(int argc, char** argv) {
             std::uint64_t training_updates = 0; for (const auto& p : world.villagers) training_updates += p.brain.updates;
             std::cout << "Headless: " << config.steps << " steps, day " << world.day() << ", " << survivors
                       << " alive (" << world.child_count() << " children), " << world.births << " births, " << world.arrivals << " arrivals, " << world.deaths << " deaths, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, " << training_updates << " retained learning updates, peak RSS " << usage.ru_maxrss << " KiB\n";
+            std::uint64_t units = 0, food = 0, empty = 0, unreachable = 0; double gathering_seconds = 0;
+            for (const auto& p : world.villagers) {
+                for (auto goal : {Goal::Forage, Goal::GatherWood, Goal::CollectStone, Goal::TendFarm}) { const int a = static_cast<int>(goal); units += p.outcomes.units[a]; gathering_seconds += p.outcomes.seconds[a]; }
+                food += p.outcomes.units[static_cast<int>(Goal::Forage)] + p.outcomes.units[static_cast<int>(Goal::TendFarm)]; empty += p.outcomes.empty_harvests; unreachable += p.outcomes.unreachable_candidates;
+            }
+            std::cout << "Outcomes: food_units=" << food << " gather_units=" << units << " gather_seconds=" << gathering_seconds << " empty_harvests=" << empty << " unreachable_candidates=" << unreachable << " lessons=" << world.lessons << " retained_residents=" << world.villagers.size() << '\n';
             std::cout << "Director: " << world.director.mode_name() << ", " << world.director.decisions << " decisions, " << world.director.interventions << " interventions, " << world.director.brain.episodes << " observed outcomes, " << world.director.brain.updates << " SGD steps\n";
             std::cout << "Ecology: " << world.animals.size() << " animals, " << world.ecology.animal_births << " births, " << world.ecology.animal_deaths << " deaths, " << world.ecology.predations
                       << " predations, " << world.ecology.trees_born << " new trees, " << world.ecology.plants_died << " plants lost, " << world.ecology.repairs << " repairs, " << world.weather_name() << '\n';
@@ -307,6 +320,17 @@ int main(int argc, char** argv) {
                     ui.view.status = "World renamed";
                 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); }
                 refresh_saves();
+            } else if (request == Request::Pin) {
+                ui.view.status = world.toggle_pin(world.villagers[ui.view.selected].id) ? "Resident pin updated" : "Maximum six pinned residents";
+            } else if (request == Request::FoodReserve) {
+                world.food_reserve = world.food_reserve == 6 ? 12 : world.food_reserve == 12 ? 24 : world.food_reserve == 24 ? 36 : 6;
+                ui.view.status = "Food target updated; bounded by storage capacity";
+            } else if (request == Request::Priority) {
+                world.construction_priority = (world.construction_priority + 1) % 4;
+                ui.view.status = "Planning and project utility priorities updated";
+            } else if (request == Request::Teaching) {
+                world.teaching_enabled = !world.teaching_enabled;
+                ui.view.status = world.teaching_enabled ? "Nearby teaching enabled" : "Teaching paused";
             } else if (request == Request::Conservation) {
                 ui.view.status = world.toggle_conservation(ui.view.selected_tile) ? "Conservation updated - natural harvest/new plans restricted" : "Choose land; maximum 16 conservation areas";
             } else if (request == Request::Designate) {

@@ -2,7 +2,7 @@
 #include "input.hpp"
 #include "render.hpp"
 namespace village {
-enum class Request { None, Save, Load, Exit, Plan, ToggleDevelopment, Designate, ToggleGrowth, NewVillage, PreviousVillage, ToggleLearning, Volume, ToggleRumble, ExportHistory, OpenSaves, LoadSlot, DeleteSlot, RenameSlot, RandomSeed, CopyWorld, TestFeedback, AudioOutput, DirectorMode, Conservation };
+enum class Request { None, Save, Load, Exit, Plan, ToggleDevelopment, Designate, ToggleGrowth, NewVillage, PreviousVillage, ToggleLearning, Volume, ToggleRumble, ExportHistory, OpenSaves, LoadSlot, DeleteSlot, RenameSlot, RandomSeed, CopyWorld, TestFeedback, AudioOutput, DirectorMode, Conservation, Pin, FoodReserve, Priority, Teaching };
 class Interface {
 public:
     View view;

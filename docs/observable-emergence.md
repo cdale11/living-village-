@@ -47,8 +47,8 @@ sampling; population observations include all living animals.
 CSV files. Unobserved historical species counts are blank and marked unrecorded.
 
 Conservation, event IDs/evidence/parent links and observations persist in
-version-9 atomic saves. Versions 1–8 migrate without generating historical evidence
-or populations. Older executables cannot load version 9; preserve the whole saves
+version-10 atomic saves. Versions 1–9 migrate without generating historical evidence
+or populations. Older executables cannot load version 10; preserve the whole saves
 folder before upgrading.
 
 ```sh

@@ -29,11 +29,17 @@ void World::learn(Villager& p, double terminal_reward) {
         + .2 * (brain.start_loneliness - p.loneliness) / 45
         + .8 * (p.health - brain.start_health) / 20
         - std::min(.6, brain.elapsed * .003);
+    if (p.outcomes.pending_measured) {
+        ++p.outcomes.intervals[brain.action];
+        p.outcomes.hunger_reduction += brain.start_hunger - p.hunger;
+        p.outcomes.health_change += p.health - brain.start_health;
+    }
+    p.outcomes.pending_measured = false;
     if (learning_enabled) brain.observe(brain.pending, outcome);
     brain.active = false;
 }
 void World::begin_learning(Villager& p, const BrainInput& input, double base, double adjustment) {
-    auto& brain = p.brain;
+    auto& brain = p.brain; p.outcomes.pending_measured = true;
     brain.pending = input; brain.active = true; brain.action = static_cast<int>(p.goal);
     brain.elapsed = brain.progress = 0;
     brain.start_hunger = p.hunger; brain.start_energy = p.energy;

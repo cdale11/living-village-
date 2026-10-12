@@ -82,3 +82,10 @@ colors; permanent water remains recognizable.
 **Map → A tile → Y** toggles a 5x5 conservation area centered on the tile.
 **Y → Village History → D-pad up/down** browses event evidence.
 **Y → Wildlife Trends** shows species population history.
+
+**X → left/right to Life History → A** pins/unpins the selected resident.
+Up/down browses life records. **Y → Pinned Residents → A** opens a pinned life,
+including retained deceased residents. Inspector **Observed Outcomes** reports
+actual gathering/time/failures independently of weight updates.
+**Y → Social Networks → A** cycles trust, remembered resources and normal map.
+**Y → Village Policies → up/down → A** changes reserve, priority, teaching or planning.

@@ -34,8 +34,8 @@ confidence. Observer proposals have no counterfactual training target.
 
 The existing global neural-learning toggle also freezes director training and
 experimentation. Inference continues. Models, replay, mode, counters, PRNG and
-pending three-day evaluations persist in checksummed atomic version-9 saves.
-Versions 1–8 migrate; older executables cannot read version 9. Back up the whole
+pending three-day evaluations persist in checksummed atomic version-10 saves.
+Versions 1–9 migrate; older executables cannot read version 10. Back up the whole
 saves directory before upgrading. Session inference/update telemetry resets on
 load; lifetime outcome/SGD counters persist.
 

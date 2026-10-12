@@ -2,6 +2,7 @@
 #include "brain.hpp"
 #include "director.hpp"
 #include <array>
+#include <algorithm>
 #include <cstdint>
 #include <deque>
 #include <random>
@@ -62,6 +63,19 @@ struct Relationships {
     double operator[](int id) const;
     double& operator[](int id);
 };
+struct LifeEntry { std::uint64_t tick = 0; std::string message; };
+struct ZoneObservation {
+    bool recorded = false; std::uint64_t tick = 0;
+    double vegetation = 0, moisture = 0;
+    int trees = 0, wildlife = 0;
+};
+struct OutcomeStats {
+    std::array<std::uint64_t, brain_actions> intervals{}, units{};
+    std::array<double, brain_actions> seconds{};
+    std::uint64_t empty_harvests = 0, unreachable_candidates = 0;
+    double hunger_reduction = 0, health_change = 0;
+    bool pending_measured = false;
+};
 struct Villager {
     Brain brain;
     Occupation occupation = Occupation::Generalist;
@@ -85,6 +99,9 @@ struct Villager {
     std::string death_reason;
     double family_drive = 0.5;
     std::deque<std::string> history;
+    std::deque<LifeEntry> life;
+    OutcomeStats outcomes;
+    int last_lesson_day = -1000;
     Goal goal = Goal::Explore;
     int target_id = -1;
     Point destination{32, 32};
@@ -164,6 +181,11 @@ public:
     std::vector<Building> buildings;
     std::vector<Point> gather_orders;
     std::vector<Point> conservation_zones;
+    std::vector<ZoneObservation> conservation_baselines;
+    std::vector<int> pinned_residents;
+    int food_reserve = 12, construction_priority = 0;
+    bool teaching_enabled = true, exploration_enabled = true;
+    std::uint64_t lessons = 0;
     std::deque<std::string> events;
     std::mt19937 rng;
     std::mt19937 ecology_rng;
@@ -184,6 +206,10 @@ public:
     bool conserved(Point point) const;
     bool toggle_conservation(Point center);
     std::uint64_t weather_cause() const;
+    bool toggle_pin(int id);
+    ZoneObservation observe_zone(Point center) const;
+    bool teach(Villager& teacher, Villager& learner);
+    int food_target() const { return std::min(food_reserve, food_capacity()); }
     int day() const { return 1 + static_cast<int>(ticks / 2400); }
     double daylight() const;
     int food_capacity() const;

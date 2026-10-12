@@ -14,7 +14,7 @@ struct View {
     bool follow = false;
     int watched_animal_id = -1;
     int ecology_overlay = 0;
-    int history_offset = 0;
+    int history_offset = 0, life_offset = 0, policy_row = 0, pinned_row = 0;
     double cpu_percent = -1, ram_mib = -1;
     std::string audio_output, audio_status = "Not checked", rumble_status = "Not checked";
     int inspector_page = 0;

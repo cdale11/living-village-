@@ -7,7 +7,7 @@
 
 namespace village {
 void Interface::cycle(const World& world, int direction) {
-    view.watched_animal_id = -1;
+    view.watched_animal_id = -1; view.life_offset = 0;
     const int count = static_cast<int>(world.villagers.size());
     for (int attempts = 0; attempts < count; ++attempts) {
         view.selected = (view.selected + count + direction) % count;
@@ -21,6 +21,7 @@ Request Interface::update(const InputState& input, const World& world, double el
     if (input.exit_requested) return Request::Exit;
     view.selected = std::clamp(view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
     repeat -= elapsed; page_repeat -= elapsed;
+    view.pinned_row = std::clamp(view.pinned_row,0,std::max(0,static_cast<int>(world.pinned_residents.size())-1));
     if (view.panel == Panel::SeedEdit || view.panel == Panel::NameEdit) {
         const bool seed = view.panel == Panel::SeedEdit;
         if (input.hit(Button::Back)) { view.panel = view.renaming ? Panel::Saves : Panel::NewVillage; return Request::None; }
@@ -104,6 +105,15 @@ Request Interface::update(const InputState& input, const World& world, double el
         view.menu_index = (view.menu_index + count + (input.y > 0 ? 1 : -1)) % count;
         repeat = .2;
     }
+    if (std::abs(input.y) >= .5 && repeat <= 0) {
+        if (view.panel == Panel::Inspector && view.inspector_page == 6) {
+            view.life_offset = std::clamp(view.life_offset + (input.y < 0 ? 1 : -1), 0, std::max(0, static_cast<int>(world.villagers[view.selected].life.size()) - 1)); repeat = .2;
+        } else if (view.panel == Panel::Overview && (view.overview_page == 12 || view.overview_page == 13)) {
+            const int count = view.overview_page == 12 ? 4 : std::max(1, static_cast<int>(world.pinned_residents.size()));
+            auto& row = view.overview_page == 12 ? view.policy_row : view.pinned_row;
+            row = (row + count + (input.y > 0 ? 1 : -1)) % count; repeat = .2;
+        }
+    }
     if (view.panel == Panel::Overview && view.overview_page == 2 && std::abs(input.y) >= .5 && repeat <= 0) {
         view.history_offset = std::clamp(view.history_offset + (input.y < 0 ? 1 : -1), 0, std::max(0, static_cast<int>(world.chronicle.size()) - 1)); repeat = .2;
     }
@@ -117,11 +127,11 @@ Request Interface::update(const InputState& input, const World& world, double el
         page_repeat = .2;
     }
     if (view.panel == Panel::Inspector && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.inspector_page = (view.inspector_page + 6 + (input.x > 0 ? 1 : -1)) % 6;
+        view.inspector_page = (view.inspector_page + 8 + (input.x > 0 ? 1 : -1)) % 8;
         page_repeat = .2;
     }
     if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.overview_page = (view.overview_page + 11 + (input.x > 0 ? 1 : -1)) % 11;
+        view.overview_page = (view.overview_page + 14 + (input.x > 0 ? 1 : -1)) % 14;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
@@ -167,6 +177,19 @@ Request Interface::update(const InputState& input, const World& world, double el
             const auto parent = world.chronicle[index].parent;
             if (parent) for (std::size_t i = 0; i < world.chronicle.size(); ++i) if (world.chronicle[i].id == parent) {
                 view.history_offset = static_cast<int>(world.chronicle.size() - 1 - i); break;
+            }
+        }
+        else if (view.panel == Panel::Inspector && view.inspector_page == 6) return Request::Pin;
+        else if (view.panel == Panel::Overview && view.overview_page == 11) {
+            view.ecology_overlay = view.ecology_overlay == 4 ? 5 : view.ecology_overlay == 5 ? 0 : 4; view.panel = Panel::Map;
+        }
+        else if (view.panel == Panel::Overview && view.overview_page == 12) {
+            return view.policy_row == 0 ? Request::FoodReserve : view.policy_row == 1 ? Request::Priority : view.policy_row == 2 ? Request::Teaching : Request::ToggleDevelopment;
+        }
+        else if (view.panel == Panel::Overview && view.overview_page == 13 && !world.pinned_residents.empty()) {
+            const int id = world.pinned_residents[std::clamp(view.pinned_row, 0, static_cast<int>(world.pinned_residents.size()) - 1)];
+            for (std::size_t i = 0; i < world.villagers.size(); ++i) if (world.villagers[i].id == id) {
+                view.selected = static_cast<int>(i); view.inspector_page = 6; view.life_offset = 0; view.panel = Panel::Inspector; break;
             }
         }
         else if (view.panel == Panel::Overview && view.overview_page == 9) return Request::DirectorMode;

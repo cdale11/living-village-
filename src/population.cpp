@@ -111,6 +111,7 @@ bool World::have_child(int first, int second) {
     baby.id = next_person_id++; baby.brain.initialize(seed, baby.id); baby.name = new_name(baby.id); baby.age = 0; baby.hunger = 0; baby.home = house.id;
     baby.x = house.position.x; baby.y = house.position.y; baby.destination = house.position;
     baby.parents = {first, second}; baby.parent_names = {a->name, b->name};
+    remember(baby, "Born to " + a->name + " and " + b->name);
     auto inherit = [&](double av, double bv) { return std::clamp((av + bv) / 2 + (random(21) - 10) / 100.0, .2, .95); };
     baby.cooperation = inherit(a->cooperation, b->cooperation); baby.curiosity = inherit(a->curiosity, b->curiosity); baby.family_drive = inherit(a->family_drive, b->family_drive);
     baby.relationships[first] = baby.relationships[second] = 60;
@@ -202,7 +203,7 @@ void World::prune_history() {
     while (dead > dead_history_limit) {
         auto oldest = villagers.end();
         for (auto it = villagers.begin(); it != villagers.end(); ++it)
-            if (!it->alive() && (oldest == villagers.end() || it->death_day < oldest->death_day || (it->death_day == oldest->death_day && it->id < oldest->id))) oldest = it;
+            if (!it->alive() && std::find(pinned_residents.begin(), pinned_residents.end(), it->id) == pinned_residents.end() && (oldest == villagers.end() || it->death_day < oldest->death_day || (it->death_day == oldest->death_day && it->id < oldest->id))) oldest = it;
         if (oldest == villagers.end()) break;
         villagers.erase(oldest); --dead;
     }
