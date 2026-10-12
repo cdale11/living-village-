@@ -3,7 +3,7 @@ BUILD ?= build
 CPPFLAGS += -Iinclude -Ivendor/SDL2
 CXXFLAGS ?= -O2 -g
 CXXFLAGS += -std=c++17 -Wall -Wextra -Wpedantic
-CORE = src/world.cpp src/generation.cpp src/buildings.cpp src/population.cpp src/brain.cpp src/learning.cpp src/occupations.cpp src/society.cpp src/saves.cpp src/slots.cpp
+CORE = src/world.cpp src/generation.cpp src/ecology.cpp src/animals.cpp src/buildings.cpp src/population.cpp src/brain.cpp src/learning.cpp src/occupations.cpp src/society.cpp src/saves.cpp src/slots.cpp
 GAME = $(CORE) src/main.cpp src/performance.cpp src/sound.cpp src/feedback.cpp src/sdl.cpp src/input.cpp src/render.cpp src/ui.cpp
 HEADERS = $(wildcard include/living_village/*.hpp)
 
@@ -37,7 +37,10 @@ $(BUILD)/society-tests: tests/society_test.cpp $(CORE) src/ui.cpp $(HEADERS) | $
 $(BUILD)/world-management-tests: tests/world_management_test.cpp $(CORE) src/ui.cpp $(HEADERS) | $(BUILD)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/world_management_test.cpp $(CORE) src/ui.cpp -o $@ $(LDFLAGS)
 
-test: $(BUILD)/simulation-tests $(BUILD)/development-tests $(BUILD)/population-tests $(BUILD)/learning-tests $(BUILD)/adaptation-tests $(BUILD)/society-tests $(BUILD)/world-management-tests
+$(BUILD)/ecology-tests: tests/ecology_test.cpp $(CORE) src/ui.cpp $(HEADERS) | $(BUILD)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/ecology_test.cpp $(CORE) src/ui.cpp -o $@ $(LDFLAGS)
+
+test: $(BUILD)/simulation-tests $(BUILD)/development-tests $(BUILD)/population-tests $(BUILD)/learning-tests $(BUILD)/adaptation-tests $(BUILD)/society-tests $(BUILD)/world-management-tests $(BUILD)/ecology-tests
 	sh tests/diagnostics_test.sh
 	./$(BUILD)/simulation-tests
 	./$(BUILD)/development-tests
@@ -46,6 +49,7 @@ test: $(BUILD)/simulation-tests $(BUILD)/development-tests $(BUILD)/population-t
 	./$(BUILD)/adaptation-tests
 	./$(BUILD)/society-tests
 	./$(BUILD)/world-management-tests
+	./$(BUILD)/ecology-tests
 
 $(BUILD)/input-tests: tests/input_test.cpp src/input.cpp src/sdl.cpp $(HEADERS) | $(BUILD)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/input_test.cpp src/input.cpp src/sdl.cpp -o $@ $(LDFLAGS) -ldl

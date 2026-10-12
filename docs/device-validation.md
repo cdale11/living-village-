@@ -42,7 +42,7 @@ on execution errors. A collapsed difficult world is a measured outcome, not a
 test failure or an exception. No player saves or display are accessed. CI runs
 a shorter 10-day survey; long surveys are a separate development command.
 
-The October 12, 2026 desktop survey completed all 40 runs at 240,000 steps each
+The pre-ecology October 12, 2026 desktop survey completed all 40 runs at 240,000 steps each
 (100 elapsed simulation days), with 15–19 living residents at the end and a
 maximum reported process RSS of 2,832 KiB. These are two sampled seeds on the
 desktop build, not a guarantee for every seed or handheld performance figures.
@@ -86,7 +86,7 @@ Headless speed does not establish graphical FPS or battery life.
 
 1. Open Ports → LivingVillage; verify camera, selection, zoom and every controller
    menu. Fn+Start must save and return to EmulationStation from every panel.
-2. Use X's six detail pages and Y's six overview pages. Place a workshop using A;
+2. Use X's six detail pages and Y's eight overview pages. Place a workshop using A;
    watch deliveries, crafting and technology effects. Verify histories export.
 3. Change volume with A on Y's sound page; cycle through mute and higher levels.
    R1 toggles vibration. Original short PCM tones use SDL's OS audio backend;
@@ -108,3 +108,8 @@ Validate first-run world creation, all seed/name editor controls, biome/layout
 choices, save switching, rename, snapshot and confirmed inactive deletion on
 the handheld. Use synthetic worlds when checking deletion. Details are in
 [world-management.md](world-management.md).
+
+For the ecology build, also inspect Y's weather/wildlife pages, L1/R1 animal
+cycling, tile biology and building condition. Observe repairs, runoff, grazing
+and rain/snow/fire sprites. Benchmark with wildlife present; previous performance
+measurements predate the richer ecology and do not establish its device speed.

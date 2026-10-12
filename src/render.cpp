@@ -112,11 +112,15 @@ void Renderer::draw(const World& world, const View& view) {
             else if (world.biome == Biome::Woodland) { ground.r = static_cast<Uint8>(ground.r * .85); ground.g = static_cast<Uint8>(ground.g * .9); }
             else if (world.biome == Biome::Meadow) ground.g = static_cast<Uint8>(std::min(190, ground.g + 12));
             rect(sx, sy, size + 1, size + 1, ground);
-            rect(sx + unit, sy + size - unit * 2, unit, unit, {91, 138, 77, 255});
+            if (tile.compaction > .15) rect(sx + size / 3, sy, size / 3, size, {132, 114, 78, static_cast<Uint8>(tile.compaction * 150)});
+            if (tile.biomass > .25) rect(sx + unit, sy + size - unit * 2, unit, unit, {91, 138, 77, 255});
             switch (tile.terrain) {
                 case Terrain::Tree:
                     rect(sx + size / 2 - unit, sy + size / 2, unit * 2, size / 2, {98, 70, 43, 255});
                     if (tile.wood == 0) break;
+                    if (tile.plant_age < 20) {
+                        rect(sx + size / 3, sy + size / 3, size / 3, size / 3, {68, 115, 58, 255}); break;
+                    }
                     rect(sx + unit, sy + unit * 2, size - unit * 2, size / 2, {32, 76, 47, 255});
                     rect(sx + unit * 2, sy + unit, size - unit * 4, size / 2, {42, 93, 52, 255});
                     rect(sx + unit * 3, sy, size - unit * 6, unit * 2, {66, 114, 59, 255});
@@ -140,6 +144,12 @@ void Renderer::draw(const World& world, const View& view) {
                 case Terrain::Grass: break;
             }
             if (tile.loose_food + tile.loose_wood + tile.loose_stone > 0) rect(sx + size - unit * 3, sy + size - unit * 3, unit * 2, unit * 2, {220, 190, 124, 255});
+            if (tile.surface_water > .15 && tile.terrain != Terrain::Water) rect(sx, sy + size / 2, size, size / 2, {76, 124, 153, static_cast<Uint8>(std::min(180.0, tile.surface_water * 240))});
+            if (tile.snowpack > .02 && tile.terrain != Terrain::Water) rect(sx, sy + size / 2, size, size / 2, {216, 227, 222, static_cast<Uint8>(std::min(180.0, tile.snowpack * 600))});
+            if (tile.fire > 0) {
+                rect(sx + size / 4, sy + size / 4, size / 2, size * 3 / 4, {225, 103, 41, 210});
+                rect(sx + size / 3, sy + static_cast<int>(world.ticks / 5 % 3) * unit, size / 3, size / 2, {255, 196, 79, 230});
+            }
         }
     }
     for (Point order : world.gather_orders) {
@@ -196,6 +206,28 @@ void Renderer::draw(const World& world, const View& view) {
                 }
                 break;
         }
+        if (b.condition < 85) {
+            rect(x + 2, y + size - 3, size - 4, 2, {68, 47, 36, 255});
+            rect(x + 2, y + size - 3, static_cast<int>((size - 4) * b.condition / 100), 2, {219, 152, 79, 255});
+        }
+    }
+    for (const auto& animal : world.animals) {
+        const int x = px(animal.x + .5), y = py(animal.y + .5), u = std::max(1, size / 10);
+        if (x < -size || x > 720 || y < -size || y > 480) continue;
+        if (animal.species == Species::Bee) {
+            const int buzz = static_cast<int>((world.ticks / 4 + animal.id) % 3) - 1;
+            rect(x - u, y + buzz * u, u * 2, u, {236, 191, 69, 255});
+            rect(x, y - u + buzz * u, u, u, {222, 234, 211, 255});
+        } else {
+            const bool deer = animal.species == Species::Deer;
+            const SDL_Color coat = deer ? SDL_Color{171, 133, 85, 255} : animal.species == Species::Fox ? SDL_Color{205, 118, 56, 255} : SDL_Color{188, 178, 153, 255};
+            rect(x - u * 2, y, u * 4, u * (deer ? 2 : 1), coat);
+            rect(x + u, y - u, u * 2, u * 2, coat);
+            rect(x + u * 2, y - u * (deer ? 3 : 2), u, u * 2, coat);
+            const int stride = static_cast<int>((world.ticks / 5 + animal.id) % 2);
+            rect(x - u + stride, y + u, u, u * 2, {77, 70, 56, 255});
+            rect(x + u - stride, y + u, u, u * 2, {77, 70, 56, 255});
+        }
     }
     const SDL_Color shirts[] = {{184, 95, 79, 255}, {84, 145, 193, 255}, {177, 136, 188, 255},
                                 {217, 169, 82, 255}, {130, 166, 99, 255}, {126, 177, 174, 255}};
@@ -245,7 +277,7 @@ void Renderer::draw(const World& world, const View& view) {
     text(492, 8, std::to_string(view.speed) + "X", cream);
     text(555, 8, view.panel == Panel::Map ? "RUNNING" : "PAUSED", cream);
     text(12, 32, "FOOD " + std::to_string(world.food_stock) + "/" + std::to_string(world.food_capacity()) +
-         "  WOOD " + std::to_string(world.wood_stock) + "  STONE " + std::to_string(world.stone_stock) + "  " + world.season_name() + (world.raining() ? " RAIN" : " DRY"), muted);
+         "  WOOD " + std::to_string(world.wood_stock) + "  STONE " + std::to_string(world.stone_stock) + "  " + world.season_name() + " " + world.weather_name(), muted);
     rect(0, 426, 720, 54, ink);
     text(12, 433, "A TILE/PLAN  X PERSON  Y VILLAGE  FN+START EXIT", muted);
     text(12, 455, view.status, cream, 2, 690);
@@ -343,7 +375,8 @@ void Renderer::draw(const World& world, const View& view) {
                 break;
             }
             case Panel::Overview: {
-                text(102, 80, view.overview_page == 0 ? "VILLAGE LIFE" : view.overview_page == 1 ? "POPULATION" : view.overview_page == 2 ? "VILLAGE HISTORY" : view.overview_page == 3 ? "NEURAL LEARNING" : view.overview_page == 4 ? "ECONOMY / HISTORY" : "SOUND / VIBRATION", cream, 3);
+                const char* titles[] = {"VILLAGE LIFE", "POPULATION", "VILLAGE HISTORY", "NEURAL LEARNING", "ECONOMY / HISTORY", "SOUND / VIBRATION", "ECOLOGY / WEATHER", "WILDLIFE"};
+                text(102, 80, titles[std::clamp(view.overview_page, 0, 7)], cream, 3);
                 if (view.overview_page == 0) {
                     int finished = 0; for (const auto& b : world.buildings) if (b.complete) ++finished;
                     text(102, 122, world.world_name, cream);
@@ -376,6 +409,32 @@ void Renderer::draw(const World& world, const View& view) {
                     text(102, 136, "A: SOUND VOLUME " + std::to_string(world.volume), cream);
                     text(102, 186, "R1: VIBRATION " + std::string(world.rumble_enabled ? "ON" : "OFF"), cream);
                     text(102, 250, "Short sounds mark choices and village events. Vibration requires SDL support from the device driver.", muted, 2, 504);
+                } else if (view.overview_page == 6) {
+                    double moisture = 0, fertility = 0; int forest = 0, flooded = 0, burning = 0, land = 0;
+                    for (const auto& t : world.tiles) if (t.terrain != Terrain::Water) {
+                        ++land; moisture += t.moisture; fertility += t.fertility;
+                        forest += t.terrain == Terrain::Tree; flooded += t.surface_water > .35; burning += t.fire > .05;
+                    }
+                    text(102, 122, std::string(world.weather_name()) + " | " + decimal(world.temperature) + " C | Wind " + decimal(world.wind), cream);
+                    text(102, 154, "Dry days " + std::to_string(world.dry_days) + " | Flooded " + std::to_string(flooded), muted);
+                    text(102, 186, "Soil water " + decimal(moisture / std::max(1, land) * 100) + "% | Nutrients " + decimal(fertility / std::max(1, land) * 100) + "%", cream);
+                    text(102, 218, "Trees " + std::to_string(forest) + " | Seedlings born " + std::to_string(world.ecology.trees_born), muted);
+                    text(102, 250, "Burning " + std::to_string(burning) + " | Plants lost " + std::to_string(world.ecology.plants_died), cream);
+                    text(102, 282, "Wildlife " + std::to_string(world.animals.size()) + " | Predations " + std::to_string(world.ecology.predations), muted);
+                    text(102, 314, "Building repairs " + std::to_string(world.ecology.repairs), cream);
+                } else if (view.overview_page == 7) {
+                    if (world.animals.empty()) text(102, 146, "No wildlife remains in this habitat", muted);
+                    else {
+                        const auto& a = world.animals[std::clamp(view.selected_animal, 0, static_cast<int>(world.animals.size()) - 1)];
+                        text(102, 120, std::string(species_name(a.species)) + " #" + std::to_string(a.id) + (a.female ? " F" : " M") + " | Age " + decimal(a.age) + " days", cream);
+                        text(102, 148, std::string(animal_action_name(a.action)) + " | " + std::to_string(static_cast<int>(a.x)) + "/" + std::to_string(static_cast<int>(a.y)), muted);
+                        text(102, 178, "Hunger " + decimal(a.hunger) + " Thirst " + decimal(a.thirst) + " Health " + decimal(a.health), cream);
+                        text(102, 208, "Energy " + decimal(a.energy) + " Body " + decimal(a.body_temperature) + " C", muted);
+                        text(102, 238, "Disease " + decimal(a.disease * 100) + "% | Pregnancy " + decimal(a.gestation) + " days", cream);
+                        text(102, 268, "MLP episodes " + std::to_string(a.brain.episodes) + " | Reward " + decimal(a.brain.last_reward), muted);
+                        text(102, 298, a.reason, cream, 2, 504);
+                        text(102, 336, "L1/R1 ANIMALS", muted);
+                    }
                 } else {
                     for (std::size_t i = world.events.size() > 4 ? world.events.size() - 4 : 0, line = 0; i < world.events.size(); ++i, ++line)
                         text(102, 126 + static_cast<int>(line) * 54, world.events[i], cream, 2, 504);
@@ -458,13 +517,19 @@ void Renderer::draw(const World& world, const View& view) {
                     else if (b.kind == BuildingKind::FoodStorage) text(102, 202, "Adds 40 to shared food capacity", cream);
                     else if (b.kind == BuildingKind::Stockpile) text(102, 202, "Adds 20 to wood and stone capacity", cream);
                     else text(102, 202, b.fuel > 0 ? "Lit - warmth and social comfort" : "No fuel - needs shared wood", cream);
+                    if (b.complete) {
+                        text(102, 282, "Condition " + decimal(b.condition) + "% | Repair W " + std::to_string(b.repair_wood) + " S " + std::to_string(b.repair_stone), cream);
+                        text(102, 314, "Repair work " + decimal(b.repair_work) + "/8", muted);
+                    }
                 } else {
                     text(102, 172, "Food " + std::to_string(cell.food) + " | Wood " + std::to_string(cell.wood) + " | Stone " + std::to_string(cell.stone), cream);
                     if (cell.loose_food + cell.loose_wood + cell.loose_stone > 0) text(102, 198, "Loose F " + std::to_string(cell.loose_food) + " W " + std::to_string(cell.loose_wood) + " S " + std::to_string(cell.loose_stone), muted);
                     const bool resource = cell.terrain == Terrain::Tree || cell.terrain == Terrain::Stone || cell.terrain == Terrain::Bush;
                     const bool designated = std::find(world.gather_orders.begin(), world.gather_orders.end(), at) != world.gather_orders.end();
                     text(102, 232, world.can_plan(at) ? "A: PLACE A CONSTRUCTION PLAN" : resource ? (designated ? "A: CANCEL GATHERING AREA" : "A: DESIGNATE GATHERING AREA") : "Plans need reachable empty grass", muted, 2, 504);
-                    if (resource) text(102, 276, "5X5 area - shared priorities, not orders", muted, 2, 504);
+                    text(102, 278, "Water " + decimal(cell.moisture * 100) + "% | Nutrients " + decimal(cell.fertility * 100) + "%", muted);
+                    text(102, 302, "Plant health " + decimal(cell.plant_health) + " | Age " + decimal(cell.plant_age) + " days", muted);
+                    text(102, 326, "Flood " + decimal(cell.surface_water) + " Wear " + decimal(cell.compaction * 100) + "%", muted);
                 }
                 text(102, 354, "B BACK", muted); break;
             }

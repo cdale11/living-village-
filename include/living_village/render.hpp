@@ -11,6 +11,7 @@ struct View {
     bool follow = false;
     int inspector_page = 0;
     int overview_page = 0;
+    int selected_animal = 0;
     Point selected_tile{32, 32};
     Panel panel = Panel::Map;
     bool has_world = true;

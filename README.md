@@ -35,7 +35,7 @@ ssh root@DEVICE_IP 'tar -xzf /userdata/living-village-knulli-arm64.tar.gz -C /us
 
 All files and saves stay on `/userdata`; installation does not modify the system partition. On upgrades, replace the launcher and `bin/`, preserving your `saves/` and customized `config/`. The archive contains empty save/log directories, with no save file.
 
-The user confirmed the initial ARM64 release runs on KNULLI. This world-management update is cross compiled and tested on desktop, and still needs physical validation on the handheld. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
+The user confirmed the initial ARM64 release runs on KNULLI. This ecology update is cross compiled and tested on desktop, and still needs physical validation on the handheld. The Fn+Start shortcut remains covered by virtual-controller tests. See [device checks](docs/knulli.md).
 
 The archive also includes `livingvillage/scripts/diagnose_knulli.sh`. Run it with
 `system`, `cpu`, `graphics` or `input` to create an offline diagnostic report in
@@ -48,6 +48,9 @@ for display-session requirements and the 40-world headless survey command.
 - Manage up to 32 named worlds: load, rename, snapshot and confirm deletion of old saves.
 - Observe six named villagers gathering food, wood and stone, building, farming, eating, resting and socializing.
 - Watch shared needs produce real construction plans, material deliveries and cooperative work.
+- Observe rabbits, deer, foxes and bee colonies with inherited traits, biological needs, reproduction and individual learned preferences.
+- Watch soil water, runoff, snowmelt, forest succession, grazing, pollination, drought, floods and wildfire affect the settlement.
+- Maintain weathered buildings through physical material delivery and repair work; walking wears visible paths.
 - Plan shelters, food storage, stockpiles, farm plots and campfires; designate gathering areas.
 - Inspect actual goals, utility scores, needs, skills, relationships and recent experiences.
 - Watch every villager train a personal C++ MLP from action outcomes with bounded experience replay and controlled exploration while the game runs. Inspect learned score effects or pause training through the controller.
@@ -57,7 +60,12 @@ for display-session requirements and the 40-world headless survey command.
 
 This release adds online neural learning to autonomous survival, village development, households, controller menus and persistent saves. Each resident's MLP learns from actual action outcomes and changes candidate scores within the simulation's survival and validity rules. Buildings consume delivered resources and work; farms renew food, shelters improve rest, and storage expands capacity. Seasonal/rain effects change resource growth. Households form from mutual relationships; children inherit traits and receive physically delivered meals. Conditional immigration, ageing and deaths allow generational turnover, with up to 20 living villagers. Residents acquire and change work specializations, share meals, barter surplus food/materials, dispute claims and reconcile. Workshops unlock two supplied technology upgrades. Original sound effects and optional SDL rumble are configurable. There is no offline progression.
 
-To upgrade, replace only `livingvillage/bin/living-village` and keep saves/config. Version 1–5 saves upgrade automatically to version 6, preserving existing state. Older binaries cannot read version 6 saves. Keep a separate backup before upgrading.
+To upgrade, replace only `livingvillage/bin/living-village` and keep saves/config. Version 1–6 saves upgrade automatically to version 7, preserving existing state. Older binaries cannot read version 7 saves. Keep a separate backup before upgrading.
+
+See [ecology and wildlife](docs/ecology.md) for biological rules, hazard mechanics,
+maintenance and model limits. Y's last two pages show Ecology/weather and Wildlife;
+L1/R1 cycles individual animals on Wildlife. A tile inspection shows soil/plant
+state or structure condition. No offline progression or internet is required.
 
 ## Planning and inspecting
 

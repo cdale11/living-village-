@@ -53,3 +53,10 @@ See [world-management.md](world-management.md) for file layout and behavior.
 On Y's economy/history page, A exports CSV files to `saves/exports`.
 On Y's sound/vibration page, A cycles volume (including mute) and R1 toggles
 optional SDL rumble. These preferences persist with the village.
+
+The overview also has Ecology/weather and Wildlife pages after sound/vibration.
+On Wildlife, L1/R1 selects an animal; the page shows actual biology, activity,
+motivation and neural learning. A tile inspection shows soil moisture/nutrients,
+plant health/age, surface flood water and traffic compaction. Buildings show
+condition, delivered maintenance materials and repair work. No extra keyboard
+or mouse actions are required. See [ecology](ecology.md).

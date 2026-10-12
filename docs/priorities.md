@@ -25,3 +25,9 @@ Validation tooling now includes a packaged KNULLI system/CPU/graphics/input
 report script with no player-save access, and a two-seed, all-biome/layout
 headless soak command. These make the remaining device checks reproducible;
 they do not replace physical measurements. CI runs a short ecological survey.
+
+The ecology expansion adds plant/soil biology, forest recruitment and mortality,
+four wildlife types with inherited traits and learned preferences, finite nectar
+and pollination, hydrology/snowmelt, floods/fire, weathering/traffic and actual
+building maintenance. See [ecology](ecology.md) for rules and limitations.
+Handheld performance and long-term ecological balancing remain validation work.

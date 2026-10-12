@@ -98,6 +98,8 @@ int main(int argc, char** argv) {
             std::uint64_t training_updates = 0; for (const auto& p : world.villagers) training_updates += p.brain.updates;
             std::cout << "Headless: " << config.steps << " steps, day " << world.day() << ", " << survivors
                       << " alive (" << world.child_count() << " children), " << world.births << " births, " << world.arrivals << " arrivals, " << world.deaths << " deaths, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, " << training_updates << " retained learning updates, peak RSS " << usage.ru_maxrss << " KiB\n";
+            std::cout << "Ecology: " << world.animals.size() << " animals, " << world.ecology.animal_births << " births, " << world.ecology.animal_deaths << " deaths, " << world.ecology.predations
+                      << " predations, " << world.ecology.trees_born << " new trees, " << world.ecology.plants_died << " plants lost, " << world.ecology.repairs << " repairs, " << world.weather_name() << '\n';
             return 0;
         }
         SaveCatalog catalog(config.save_dir);

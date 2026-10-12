@@ -19,7 +19,14 @@ constexpr int biome_count = 4, geography_count = 5;
 const char* biome_name(Biome biome);
 const char* geography_name(Geography geography);
 enum class Goal : int { Explore, Forage, Eat, Rest, GatherWood, CollectStone, DeliverMaterials, TakeMaterials, Build, TendFarm, DeliverFood, StoreMaterials, Socialize, RefuelFire, Arrive, Play, Care, CollectMeal, WaitForCare };
-struct Tile { Terrain terrain = Terrain::Grass; int food = 0; double regrowth = 0; int wood = 0, stone = 0; int loose_food = 0, loose_wood = 0, loose_stone = 0; };
+struct Tile {
+    Terrain terrain = Terrain::Grass; int food = 0; double regrowth = 0;
+    int wood = 0, stone = 0; int loose_food = 0, loose_wood = 0, loose_stone = 0;
+    double elevation = 0, moisture = .55, surface_water = 0, groundwater = .3;
+    double fertility = .7, organic = .5, compaction = 0, erosion = 0;
+    double biomass = .7, plant_age = 0, plant_health = 100, disease = 0;
+    double seed_bank = 0, pollination = .5, fire = 0, bush_seeds = 0, nectar = .4, snowpack = 0;
+};
 struct Point { int x = 0, y = 0; bool operator==(const Point& b) const { return x == b.x && y == b.y; } };
 constexpr Point camp{32, 32};
 enum class BuildingKind : int { Shelter, FoodStorage, Stockpile, Farm, Campfire, Workshop };
@@ -36,6 +43,8 @@ struct Building {
     int food = 0;
     int upgrade_wood = 0, upgrade_stone = 0;
     double upgrade_work = 0;
+    double condition = 100, repair_work = 0;
+    int repair_wood = 0, repair_stone = 0;
     std::vector<int> contributors;
     std::string initiator_name;
     void contribute(int person_id);
@@ -92,6 +101,31 @@ struct DailyRecord {
     int day = 1, people = 0, children = 0, food = 0, wood = 0, stone = 0, buildings = 0, technology = 0;
     std::uint64_t births = 0, deaths = 0, trades = 0;
 };
+enum class Weather : int { Clear, Rain, Storm, Snow, Heatwave };
+enum class Species : int { Rabbit, Deer, Fox, Bee };
+enum class AnimalAction : int { Wander, Feed, Drink, Rest, Flee, Hunt, Mate };
+constexpr int animal_limit = 48;
+const char* species_name(Species species);
+const char* animal_action_name(AnimalAction action);
+struct Animal {
+    int id = 0, parent = -1;
+    Species species = Species::Rabbit;
+    bool female = false;
+    double x = 0, y = 0, age = 0, hunger = 20, thirst = 15, energy = 90, health = 100;
+    double mass = .5, metabolism = 1, immunity = .5, fertility = .5, disease = 0;
+    double gestation = 0, mate_metabolism = 1, mate_immunity = .5, mate_fertility = .5;
+    double body_temperature = 38, decision_timer = 0, action_timer = 0;
+    int last_birth_day = -1000, target_id = -1;
+    Point destination;
+    AnimalAction action = AnimalAction::Wander;
+    std::string reason = "Looking for habitat";
+    Brain brain;
+};
+struct EcologyStats {
+    std::uint64_t animal_births = 0, animal_deaths = 0, predations = 0;
+    std::uint64_t trees_born = 0, plants_died = 0, fires_started = 0, repairs = 0;
+    double rain_input = 0, evaporation = 0, runoff_out = 0, water_used = 0;
+};
 class World {
 public:
     explicit World(std::uint32_t seed = 20261011, Biome biome = Biome::Temperate, Geography geography = Geography::Ponds);
@@ -116,12 +150,21 @@ public:
     std::deque<DailyRecord> statistics;
     int next_person_id = 6, next_migration_day = 12, next_birth_day = 8;
     std::uint64_t births = 0, arrivals = 0, deaths = 0;
-    std::array<Tile, map_size * map_size> tiles{};
+    // Fixed-size heap storage keeps world copies/save parsing off the small stack.
+    std::vector<Tile> tiles = std::vector<Tile>(map_size * map_size);
     std::vector<Villager> villagers;
     std::vector<Building> buildings;
     std::vector<Point> gather_orders;
     std::deque<std::string> events;
     std::mt19937 rng;
+    std::mt19937 ecology_rng;
+    std::vector<Animal> animals;
+    int next_animal_id = 0, dry_days = 0;
+    Weather weather = Weather::Clear;
+    double temperature = 18, precipitation = 0, wind = .2;
+    bool ecology_enabled = true;
+    bool flood_alert = false;
+    EcologyStats ecology;
     const Tile& tile(int x, int y) const { return tiles.at(y * map_size + x); }
     Tile& tile(int x, int y) { return tiles.at(y * map_size + x); }
     bool passable(int x, int y) const;
@@ -150,7 +193,19 @@ public:
     bool plan(BuildingKind kind, Point point, int initiator = -1);
     bool designate(Point point);
     int season() const { return ((day() - 1) / 10) % 4; }
-    bool raining() const { return (seed + static_cast<unsigned>(day()) * 17) % 7 < 2; }
+    bool raining() const { return precipitation > 0 && weather != Weather::Snow; }
+    const char* weather_name() const;
+    double plant_growth(const Tile& cell) const;
+    void initialize_ecology(bool wildlife = true);
+    void update_ecology(double seconds);
+    void update_animals(double seconds);
+    void update_weather();
+    bool spawn_animal(Species species, Point place, int parent = -1);
+    bool ignite(Point place);
+    void trample(Point place, double amount = 1);
+    int repair_wood_needed(const Building& site) const;
+    int repair_stone_needed(const Building& site) const;
+    bool repair(Villager& person, Building& site, double dt);
     const char* season_name() const;
     std::string serialize() const;
     static World deserialize(const std::string& data);
@@ -181,6 +236,7 @@ private:
     void remember(Villager& person, const std::string& experience);
     double growing_rate() const;
     int random(int maximum);
+    int eco_random(int maximum);
 };
 const char* goal_name(Goal goal);
 } // namespace village

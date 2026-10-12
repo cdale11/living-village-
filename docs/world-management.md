@@ -106,12 +106,12 @@ validated backup each. Snapshot copies retain the current seed, time and trained
 models so they can be loaded as independent branches. Save names never become
 file paths. Other unrelated files are ignored by the manager.
 
-Save format **6** stores name, seed, biome, layout and generator version in
-addition to all simulation/neural/history state. Versions **1–5** upgrade
+Save format **7** stores name, seed, biome, layout and generator version in
+addition to all simulation/neural/history state. Versions **1–6** upgrade
 automatically. Existing current/previous files remain browsable without being
 silently deleted or moved. Old worlds use their original temperate/ponds setting;
 their actual terrain, learned weights, replay and progress remain intact. Older
-executables cannot read version 6. Back up/synchronize the **whole saves folder**,
+executables cannot read version 7. Back up/synchronize the **whole saves folder**,
 including markers, worlds, backups and exports, before upgrades.
 
 ## Desktop/SSH commands

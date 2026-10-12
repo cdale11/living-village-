@@ -83,8 +83,14 @@ Request Interface::update(const InputState& input, const World& world, double el
     }
     if (view.panel == Panel::Overview && view.overview_page == 5 && input.hit(Button::Next)) return Request::ToggleRumble;
     if (view.has_world && (view.panel == Panel::Map || view.panel == Panel::Inspector || view.panel == Panel::Overview)) {
-        if (input.hit(Button::Previous)) cycle(world, -1);
-        if (input.hit(Button::Next)) cycle(world, 1);
+        if (view.panel == Panel::Overview && view.overview_page == 7 && !world.animals.empty()) {
+            const int count = static_cast<int>(world.animals.size());
+            if (input.hit(Button::Previous)) view.selected_animal = (view.selected_animal + count - 1) % count;
+            if (input.hit(Button::Next)) view.selected_animal = (view.selected_animal + 1) % count;
+        } else {
+            if (input.hit(Button::Previous)) cycle(world, -1);
+            if (input.hit(Button::Next)) cycle(world, 1);
+        }
     }
     if (input.hit(Button::ZoomOut)) view.tile_size = std::max(16, view.tile_size - 4);
     if (input.hit(Button::ZoomIn)) view.tile_size = std::min(48, view.tile_size + 4);
@@ -106,7 +112,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         page_repeat = .2;
     }
     if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.overview_page = (view.overview_page + 6 + (input.x > 0 ? 1 : -1)) % 6;
+        view.overview_page = (view.overview_page + 8 + (input.x > 0 ? 1 : -1)) % 8;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {

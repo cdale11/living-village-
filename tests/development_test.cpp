@@ -90,7 +90,8 @@ int main() {
         spring.tile(20, 20) = {Terrain::Bush, 0, 0}; winter.tile(20, 20) = {Terrain::Bush, 0, 0};
         winter.ticks = 30 * 2400;
         advance(spring, 1000); advance(winter, 1000);
-        check(spring.tile(20, 20).food > winter.tile(20, 20).food, "Winter did not slow resource regeneration");
+        const auto& spring_crop = spring.tile(20, 20); const auto& winter_crop = winter.tile(20, 20);
+        check(spring_crop.food * 80 + spring_crop.regrowth > winter_crop.food * 80 + winter_crop.regrowth, "Winter did not slow resource regeneration");
 
 #ifdef _LIBCPP_VERSION
         std::ifstream legacy_file("tests/fixtures/version1-libcxx.lvsave", std::ios::binary);
@@ -104,7 +105,7 @@ int main() {
         old_header >> magic >> version >> old_seed >> old_ticks >> old_food >> old_rng;
         check(migrated.seed == old_seed && migrated.ticks == old_ticks && migrated.rng == old_rng, "Migration changed seed/time/random state");
         check(migrated.villagers[0].name == "Mira" && migrated.villagers[0].x == 31 && migrated.villagers[0].y == 30 && migrated.villagers[0].hunger == 15 && migrated.villagers[0].energy == 90, "Migration changed existing villager needs/position");
-        check(migrated.serialize().find("LIVING_VILLAGE 6\n") == 0, "Migrated save did not upgrade to version 3");
+        check(migrated.serialize().find("LIVING_VILLAGE 7\n") == 0, "Migrated save did not upgrade to version 7");
         check(World::deserialize(migrated.serialize()).serialize() == migrated.serialize(), "Migrated save did not round-trip");
         advance(migrated, 3000); check(migrated.alive_count() == 6 && migrated.buildings.size() > 2, "Migrated village failed to develop");
         construction.simulation_speed = 4;

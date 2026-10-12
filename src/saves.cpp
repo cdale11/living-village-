@@ -20,7 +20,7 @@ void require(bool valid) { if (!valid) throw std::runtime_error("Invalid or unsu
 bool range(double value, double maximum) { return std::isfinite(value) && value >= 0 && value <= maximum; }
 Point read_point(std::istream& in) { Point p; in >> p.x >> p.y; require(in.good() && p.x >= 0 && p.x < 64 && p.y >= 0 && p.y < 64); return p; }
 std::string read_file(const std::filesystem::path& path) {
-    require(std::filesystem::file_size(path) <= 4 * 1024 * 1024);
+    require(std::filesystem::file_size(path) <= save_byte_limit);
     std::ifstream in(path, std::ios::binary);
     if (!in) throw std::runtime_error("Cannot open save " + path.string());
     std::ostringstream data; data << in.rdbuf();
@@ -41,11 +41,36 @@ void flush_file(const std::filesystem::path& path, const std::string& data) {
     const int closed = ::close(fd);
     if (result != 0 || closed != 0) throw std::runtime_error("Save flush failed");
 }
+void write_animal_brain(std::ostream& out, const Brain& b) {
+    out << b.active << ' ' << b.action << ' ' << b.updates << ' ' << b.elapsed << ' ' << b.progress << ' '
+        << b.start_hunger << ' ' << b.start_energy << ' ' << b.start_health << ' ' << b.start_loneliness << ' '
+        << b.last_reward << ' ' << b.last_prediction << ' ' << b.last_error << ' ' << b.selected_base << ' ' << b.selected_adjustment << '\n';
+    for (double value : b.weights) out << value << ' ';
+    out << '\n'; for (double value : b.pending) out << value << ' ';
+    out << '\n' << b.replay_size << ' ' << b.replay_head << ' ' << b.random_state << ' ' << b.episodes << ' ' << b.replay_updates << ' ' << b.experiments << ' ' << b.selected_exploration << '\n';
+    for (int n = 0; n < b.replay_size; ++n) {
+        out << b.replay[n].reward;
+        for (double value : b.replay[n].input) out << ' ' << value;
+        out << '\n';
+    }
+}
+void read_animal_brain(std::istream& in, Brain& b) {
+    in >> b.active >> b.action >> b.updates >> b.elapsed >> b.progress >> b.start_hunger >> b.start_energy >> b.start_health >> b.start_loneliness
+        >> b.last_reward >> b.last_prediction >> b.last_error >> b.selected_base >> b.selected_adjustment;
+    for (double& value : b.weights) in >> value;
+    for (double& value : b.pending) in >> value;
+    in >> b.replay_size >> b.replay_head >> b.random_state >> b.episodes >> b.replay_updates >> b.experiments >> b.selected_exploration;
+    require(b.replay_size >= 0 && b.replay_size <= replay_capacity);
+    for (int n = 0; n < b.replay_size; ++n) {
+        in >> b.replay[n].reward; for (double& value : b.replay[n].input) in >> value;
+    }
+    require(!in.fail() && b.valid());
+}
 }
 
 std::string World::serialize() const {
     std::ostringstream out;
-    out << std::setprecision(17) << "LIVING_VILLAGE 6\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
+    out << std::setprecision(17) << "LIVING_VILLAGE 7\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
     out << "GENERATION " << generator_version << ' ' << static_cast<int>(biome) << ' ' << static_cast<int>(geography) << ' ' << std::quoted(world_name) << '\n';
     out << wood_stock << ' ' << stone_stock << ' ' << auto_develop << ' ' << food_shortage << ' ' << simulation_speed << '\n';
     out << population_growth << ' ' << next_person_id << ' ' << next_migration_day << ' ' << next_birth_day << ' ' << births << ' ' << arrivals << ' ' << deaths << '\n';
@@ -61,7 +86,8 @@ std::string World::serialize() const {
             << b.wood_delivered << ' ' << b.stone_delivered << ' ' << b.initiator << ' ' << b.work << ' ' << b.growth << ' '
             << b.fuel << ' ' << b.food << ' ' << std::quoted(b.initiator_name) << ' ' << b.contributors.size();
         for (int id : b.contributors) out << ' ' << id;
-        out << ' ' << b.upgrade_wood << ' ' << b.upgrade_stone << ' ' << b.upgrade_work << '\n';
+        out << ' ' << b.upgrade_wood << ' ' << b.upgrade_stone << ' ' << b.upgrade_work
+            << ' ' << b.condition << ' ' << b.repair_wood << ' ' << b.repair_stone << ' ' << b.repair_work << '\n';
     }
     out << gather_orders.size() << '\n';
     for (Point point : gather_orders) out << point.x << ' ' << point.y << '\n';
@@ -107,17 +133,29 @@ std::string World::serialize() const {
     for (const auto& record : chronicle) out << record.tick << ' ' << std::quoted(record.message) << '\n';
     out << statistics.size() << '\n';
     for (const auto& r : statistics) out << r.day << ' ' << r.people << ' ' << r.children << ' ' << r.food << ' ' << r.wood << ' ' << r.stone << ' ' << r.buildings << ' ' << r.technology << ' ' << r.births << ' ' << r.deaths << ' ' << r.trades << '\n';
+    out << "ECOLOGY 1 " << ecology_enabled << ' ' << static_cast<int>(weather) << ' ' << temperature << ' ' << precipitation << ' ' << wind << ' ' << dry_days << ' ' << next_animal_id << ' ' << flood_alert << '\n';
+    out << ecology.animal_births << ' ' << ecology.animal_deaths << ' ' << ecology.predations << ' ' << ecology.trees_born << ' ' << ecology.plants_died << ' ' << ecology.fires_started << ' ' << ecology.repairs
+        << ' ' << ecology.rain_input << ' ' << ecology.evaporation << ' ' << ecology.runoff_out << ' ' << ecology.water_used << '\n' << ecology_rng << '\n';
+    for (const auto& t : tiles) out << t.elevation << ' ' << t.moisture << ' ' << t.surface_water << ' ' << t.groundwater << ' ' << t.fertility << ' ' << t.organic << ' '
+        << t.compaction << ' ' << t.erosion << ' ' << t.biomass << ' ' << t.plant_age << ' ' << t.plant_health << ' ' << t.disease << ' ' << t.seed_bank << ' ' << t.pollination << ' ' << t.fire << ' ' << t.bush_seeds << ' ' << t.nectar << ' ' << t.snowpack << '\n';
+    out << animals.size() << '\n';
+    for (const auto& a : animals) {
+        out << a.id << ' ' << a.parent << ' ' << static_cast<int>(a.species) << ' ' << a.female << ' ' << a.x << ' ' << a.y << ' ' << a.age << ' ' << a.hunger << ' ' << a.thirst << ' ' << a.energy << ' ' << a.health << ' '
+            << a.mass << ' ' << a.metabolism << ' ' << a.immunity << ' ' << a.fertility << ' ' << a.disease << ' ' << a.gestation << ' ' << a.mate_metabolism << ' ' << a.mate_immunity << ' ' << a.mate_fertility << ' '
+            << a.body_temperature << ' ' << a.decision_timer << ' ' << a.action_timer << ' ' << a.last_birth_day << ' ' << a.target_id << ' ' << a.destination.x << ' ' << a.destination.y << ' ' << static_cast<int>(a.action) << ' ' << std::quoted(a.reason) << '\n';
+        write_animal_brain(out, a.brain);
+    }
     const std::string body = out.str(); return body + "CHECKSUM " + std::to_string(checksum(body)) + "\n";
 }
 
 World World::deserialize(const std::string& data) {
-    require(data.size() <= 4 * 1024 * 1024);
+    require(data.size() <= save_byte_limit);
     const auto footer = data.rfind("CHECKSUM "); require(footer != std::string::npos);
     std::istringstream trailer(data.substr(footer + 9)); std::uint64_t expected = 0;
     trailer >> expected; require(!trailer.fail()); trailer >> std::ws; require(trailer.eof());
     require(checksum(data.substr(0, footer)) == expected);
     std::istringstream in(data.substr(0, footer)); std::string magic; int version = 0;
-    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 6);
+    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 7);
     std::uint32_t seed = 0; in >> seed; World world(seed); world.chronicle.clear(); world.statistics.clear(); world.event_sequence = 0;
     in >> world.ticks >> world.food_stock;
     if (version >= 6) {
@@ -167,6 +205,11 @@ World World::deserialize(const std::string& data) {
                 for (int id = 0; id < 20; ++id) if (mask & (1U << id)) b.contributors.push_back(id);
             }
             if (version >= 5) in >> b.upgrade_wood >> b.upgrade_stone >> b.upgrade_work;
+            if (version >= 7) {
+                in >> b.condition >> b.repair_wood >> b.repair_stone >> b.repair_work;
+                require(range(b.condition, 100) && b.repair_wood >= 0 && b.repair_wood <= 1 && b.repair_stone >= 0 && b.repair_stone <= 1 && range(b.repair_work, 8)
+                    && (b.complete || (b.repair_wood == 0 && b.repair_stone == 0 && b.repair_work == 0)));
+            }
             require(b.id == index && kind >= 0 && kind <= (version >= 5 ? 5 : 4) && b.initiator >= -1 && b.initiator < (version >= 3 ? world.next_person_id : 20));
             b.kind = static_cast<BuildingKind>(kind); auto cost = building_cost(b.kind);
             require(b.wood_delivered >= 0 && b.wood_delivered <= cost.wood && b.stone_delivered >= 0 && b.stone_delivered <= cost.stone && range(b.work, cost.work)
@@ -284,6 +327,37 @@ World World::deserialize(const std::string& data) {
         for (const auto& message : world.events) world.chronicle.push_back({world.ticks, "Imported log: " + message.substr(0, 226)});
         world.event_sequence = world.chronicle.size();
     }
+    if (version >= 7) {
+        std::string label; int schema = 0, weather = 0;
+        in >> label >> schema >> world.ecology_enabled >> weather >> world.temperature >> world.precipitation >> world.wind >> world.dry_days >> world.next_animal_id >> world.flood_alert;
+        require(label == "ECOLOGY" && schema == 1 && weather >= 0 && weather <= 4 && std::isfinite(world.temperature) && world.temperature >= -20 && world.temperature <= 50
+            && range(world.precipitation, .01) && range(world.wind, 1) && world.dry_days >= 0 && world.dry_days <= 1000 && world.next_animal_id >= 0 && world.next_animal_id <= 1000000000);
+        world.weather = static_cast<Weather>(weather); auto& e = world.ecology;
+        in >> e.animal_births >> e.animal_deaths >> e.predations >> e.trees_born >> e.plants_died >> e.fires_started >> e.repairs >> e.rain_input >> e.evaporation >> e.runoff_out >> e.water_used >> world.ecology_rng;
+        require(e.animal_births <= 100000000000ULL && e.animal_deaths <= 100000000000ULL && e.predations <= e.animal_deaths && e.trees_born <= 100000000000ULL
+            && e.plants_died <= 100000000000ULL && e.fires_started <= 100000000000ULL && e.repairs <= 100000000000ULL && range(e.rain_input, 1e12) && range(e.evaporation, 1e12) && range(e.runoff_out, 1e12) && range(e.water_used, 1e12));
+        for (auto& t : world.tiles) {
+            in >> t.elevation >> t.moisture >> t.surface_water >> t.groundwater >> t.fertility >> t.organic >> t.compaction >> t.erosion >> t.biomass >> t.plant_age >> t.plant_health >> t.disease >> t.seed_bank >> t.pollination >> t.fire >> t.bush_seeds >> t.nectar >> t.snowpack;
+            require(range(t.elevation, 2) && range(t.moisture, 1) && range(t.surface_water, 4) && range(t.groundwater, 1) && range(t.fertility, 1) && range(t.organic, 1)
+                && range(t.compaction, 1) && range(t.erosion, 1) && range(t.biomass, 1) && range(t.plant_age, 100000) && range(t.plant_health, 100) && range(t.disease, 1)
+                && range(t.seed_bank, 1) && range(t.pollination, 1) && range(t.fire, 1) && range(t.bush_seeds, 1) && range(t.nectar, 1) && range(t.snowpack, 4));
+        }
+        int count = 0; in >> count; require(count >= 0 && count <= animal_limit); world.animals.clear();
+        for (int n = 0; n < count; ++n) {
+            Animal a; int species = 0, action = 0;
+            in >> a.id >> a.parent >> species >> a.female >> a.x >> a.y >> a.age >> a.hunger >> a.thirst >> a.energy >> a.health >> a.mass >> a.metabolism >> a.immunity >> a.fertility >> a.disease
+                >> a.gestation >> a.mate_metabolism >> a.mate_immunity >> a.mate_fertility >> a.body_temperature >> a.decision_timer >> a.action_timer >> a.last_birth_day >> a.target_id;
+            a.destination = read_point(in); in >> action >> std::quoted(a.reason);
+            require(a.id >= 0 && a.id < world.next_animal_id && (world.animals.empty() || world.animals.back().id < a.id) && a.parent >= -1 && a.parent < a.id && species >= 0 && species <= 3 && action >= 0 && action <= 6
+                && range(a.x, 63) && range(a.y, 63) && range(a.age, 100000) && range(a.hunger, 100) && range(a.thirst, 100) && range(a.energy, 100) && a.health > 0 && range(a.health, 100)
+                && range(a.mass, 1) && a.metabolism >= .7 && range(a.metabolism, 1.3) && range(a.immunity, 1) && range(a.fertility, 1) && range(a.disease, 1) && range(a.gestation, 18)
+                && a.mate_metabolism >= .7 && range(a.mate_metabolism, 1.3) && range(a.mate_immunity, 1) && range(a.mate_fertility, 1) && a.body_temperature >= 20 && range(a.body_temperature, 45)
+                && range(a.decision_timer, 11) && range(a.action_timer, 10000000) && a.last_birth_day >= -1000 && a.last_birth_day <= world.day() && a.target_id >= -1 && a.target_id < world.next_animal_id && a.reason.size() <= 200);
+            a.species = static_cast<Species>(species); a.action = static_cast<AnimalAction>(action);
+            read_animal_brain(in, a.brain); require(!a.brain.active || a.brain.action == action);
+            world.animals.push_back(a);
+        }
+    } else world.initialize_ecology();
     require(!in.fail()); in >> std::ws; require(in.eof()); return world;
 }
 
@@ -324,14 +398,20 @@ void save_atomic(const World& world, const std::filesystem::path& filename) {
 void export_history(const World& world, const std::filesystem::path& directory) {
     std::filesystem::create_directories(directory);
     auto quoted = [](const std::string& value) { std::string result = "\""; for (char c : value) { if (c == '\"') result += '\"'; result += c; } return result + '\"'; };
-    std::ostringstream events, days, people;
+    std::ostringstream events, days, people, habitat, wildlife;
     events << "seed,tick,day,event\n";
     for (const auto& r : world.chronicle) events << world.seed << ',' << r.tick << ',' << 1 + r.tick / 2400 << ',' << quoted(r.message) << '\n';
     days << "seed,day,population,children,food,wood,stone,buildings,technology,births,deaths,trades\n";
     for (const auto& r : world.statistics) days << world.seed << ',' << r.day << ',' << r.people << ',' << r.children << ',' << r.food << ',' << r.wood << ',' << r.stone << ',' << r.buildings << ',' << r.technology << ',' << r.births << ',' << r.deaths << ',' << r.trades << '\n';
     people << "seed,id,name,age,alive,role,home,partner,neural_updates,episodes,replayed,experiments,death_reason\n";
     for (const auto& p : world.villagers) people << world.seed << ',' << p.id << ',' << quoted(p.name) << ',' << p.age << ',' << p.alive() << ',' << quoted(occupation_name(p.occupation)) << ',' << p.home << ',' << p.partner << ',' << p.brain.updates << ',' << p.brain.episodes << ',' << p.brain.replay_updates << ',' << p.brain.experiments << ',' << quoted(p.death_reason) << '\n';
-    const std::pair<const char*, std::string> files[] = {{"village-history.csv", events.str()}, {"village-statistics.csv", days.str()}, {"residents.csv", people.str()}};
+    habitat << "seed,day,x,y,terrain,elevation,soil_water,surface_water,groundwater,snowpack,fertility,organic,compaction,erosion,biomass,plant_age,plant_health,disease,tree_seeds,bush_seeds,nectar,pollination,fire\n";
+    for (int y = 0; y < map_size; ++y) for (int x = 0; x < map_size; ++x) {
+        const auto& t = world.tile(x, y); habitat << world.seed << ',' << world.day() << ',' << x << ',' << y << ',' << static_cast<int>(t.terrain) << ',' << t.elevation << ',' << t.moisture << ',' << t.surface_water << ',' << t.groundwater << ',' << t.snowpack << ',' << t.fertility << ',' << t.organic << ',' << t.compaction << ',' << t.erosion << ',' << t.biomass << ',' << t.plant_age << ',' << t.plant_health << ',' << t.disease << ',' << t.seed_bank << ',' << t.bush_seeds << ',' << t.nectar << ',' << t.pollination << ',' << t.fire << '\n';
+    }
+    wildlife << "seed,day,id,parent,species,female,x,y,age,hunger,thirst,energy,health,mass,metabolism,immunity,fertility,disease,gestation,body_temperature,activity,reason,neural_updates,episodes\n";
+    for (const auto& a : world.animals) wildlife << world.seed << ',' << world.day() << ',' << a.id << ',' << a.parent << ',' << quoted(species_name(a.species)) << ',' << a.female << ',' << a.x << ',' << a.y << ',' << a.age << ',' << a.hunger << ',' << a.thirst << ',' << a.energy << ',' << a.health << ',' << a.mass << ',' << a.metabolism << ',' << a.immunity << ',' << a.fertility << ',' << a.disease << ',' << a.gestation << ',' << a.body_temperature << ',' << quoted(animal_action_name(a.action)) << ',' << quoted(a.reason) << ',' << a.brain.updates << ',' << a.brain.episodes << '\n';
+    const std::pair<const char*, std::string> files[] = {{"village-history.csv", events.str()}, {"village-statistics.csv", days.str()}, {"residents.csv", people.str()}, {"ecology.csv", habitat.str()}, {"wildlife.csv", wildlife.str()}};
     for (const auto& file : files) { const auto path = directory / file.first; flush_file(path.string() + ".tmp", file.second); std::filesystem::rename(path.string() + ".tmp", path); }
     const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY);
     if (fd < 0) throw std::runtime_error("Cannot flush history directory");

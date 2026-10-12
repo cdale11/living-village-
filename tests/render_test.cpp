@@ -54,11 +54,13 @@ int main() {
                 if (page == 4) graphics.screenshot("build/learning-preview.ppm");
                 if (page == 5) graphics.screenshot("build/practice-preview.ppm");
             }
-            if (panel == Panel::Overview) for (int page = 1; page < 6; ++page) {
+            if (panel == Panel::Overview) for (int page = 1; page < 8; ++page) {
                 view.overview_page = page; graphics.draw(world, view);
                 if (page == 1) graphics.screenshot("build/population-preview.ppm");
                 if (page == 4) graphics.screenshot("build/economy-preview.ppm");
                 if (page == 5) graphics.screenshot("build/sound-preview.ppm");
+                if (page == 6) graphics.screenshot("build/ecology-preview.ppm");
+                if (page == 7) graphics.screenshot("build/wildlife-preview.ppm");
             }
             sdl.RenderPresent(renderer);
         }

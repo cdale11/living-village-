@@ -29,17 +29,17 @@ int Building::stone_needed() const { return complete ? 0 : std::max(0, building_
 bool Building::supplied() const { return wood_needed() == 0 && stone_needed() == 0; }
 int World::food_capacity() const {
     int capacity = 30;
-    for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::FoodStorage) capacity += 40;
+    for (const auto& b : buildings) if (b.complete && b.condition > 20 && b.kind == BuildingKind::FoodStorage) capacity += 40;
     return capacity;
 }
 int World::material_capacity() const {
     int capacity = 12;
-    for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Stockpile) capacity += 20;
+    for (const auto& b : buildings) if (b.complete && b.condition > 20 && b.kind == BuildingKind::Stockpile) capacity += 20;
     return capacity;
 }
 int World::shelter_capacity() const {
     int capacity = 0;
-    for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Shelter) capacity += 4;
+    for (const auto& b : buildings) if (b.complete && b.condition > 20 && b.kind == BuildingKind::Shelter) capacity += 4;
     return capacity;
 }
 int World::alive_count() const { return static_cast<int>(std::count_if(villagers.begin(), villagers.end(), [](const Villager& p) { return p.alive(); })); }

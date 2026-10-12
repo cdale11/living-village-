@@ -2,6 +2,7 @@
 #include "world.hpp"
 #include <filesystem>
 namespace village {
+constexpr std::size_t save_byte_limit = 8 * 1024 * 1024;
 void save_atomic(const World& world, const std::filesystem::path& filename);
 World load_save(const std::filesystem::path& filename, bool* used_backup = nullptr);
 void export_history(const World& world, const std::filesystem::path& directory);

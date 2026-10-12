@@ -7,7 +7,14 @@ recipes, capacity/effect queries, placement validation and shared need-driven
 planning. `population.cpp` handles homes, households, births, arrivals, ageing
 and deaths. `brain.cpp` implements the per-resident MLP and bounded SGD;
 `learning.cpp` extracts observations and credits action outcomes. `saves.cpp`
-records full state and migrates version 1/2/3/4/5 saves to version 6. Headless runs and tests use the same simulation as the graphical game.
+records full state and migrates version 1/2/3/4/5/6 saves to version 7. Headless runs and tests use the same simulation as the graphical game.
+
+`ecology.cpp` updates weather, hydrology, plant/soil biology, hazards and maintenance
+every ten fixed ticks. `animals.cpp` updates bounded wildlife, reproduction and
+personal neural action preferences on that cadence. Tile storage is a fixed-size
+heap vector so world copies and parsing do not consume large stack frames.
+Ecology uses its own persisted PRNG; legacy villager random streams and trained
+models are preserved. Wildlife remains capped at 48, with 32 replay entries each.
 
 `main.cpp` feeds fixed 0.1-second steps. Rendering targets 30 FPS. Speed 4×
 advances four times as many steps. Stalls are bounded to 0.2 seconds and at most
@@ -30,7 +37,7 @@ The map is a 4096-tile array. BFS visits each cell once with bounded arrays.
 Movement traverses at most four path edges per update. Memory is capped at 48
 locations per resource per agent, history at six experiences per agent and 24
 shared events. Plans/buildings cap at 64 and gathering areas at 16. Save reads
-cap at 4 MiB; population caps at 20 living and 32 archived deceased villagers. Stable IDs
+cap at 8 MiB; population caps at 20 living and 32 archived deceased villagers. Stable IDs
 never reuse deceased identities. Sparse relationships cap at 32 entries and
 construction contributor histories at 64. The default population begins at six;
 3,500-day regression tests cover generational turnover.

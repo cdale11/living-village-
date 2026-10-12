@@ -79,7 +79,7 @@ residents, including up to 32 deceased residents. Old recent logs are imported
 with an explicit `Imported log:` prefix at the upgrade tick; earlier chronological
 records and historical occupation data are not invented.
 
-Save version 6 retains all these systems, replay, exploration state and
-sound/rumble preferences. Versions 1–5 upgrade automatically; version 4 trained
+Save version 7 retains all these systems, replay, exploration state and
+sound/rumble preferences. Versions 1–6 upgrade automatically; version 4 trained
 weights and pending experiences remain intact. Back up the whole saves directory
-before upgrading. Older executables cannot load version 6.
+before upgrading. Older executables cannot load version 7.

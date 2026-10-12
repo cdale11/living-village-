@@ -43,14 +43,14 @@ void World::update_homes() {
         if (!p.child() && p.parents[0] >= 0 && p.partner < 0 && p.home >= 0) {
             const auto* parent = person(p.parents[0]);
             if (parent && parent->alive() && parent->home == p.home && home_occupancy(p.home) >= 4) {
-                for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Shelter && b.id != p.home && home_occupancy(b.id) < 3) { p.home = b.id; remember(p, "Moved to a home of my own"); break; }
+                for (const auto& b : buildings) if (b.complete && b.condition > 20 && b.kind == BuildingKind::Shelter && b.id != p.home && home_occupancy(b.id) < 3) { p.home = b.id; remember(p, "Moved to a home of my own"); break; }
             }
         }
-        if (p.home >= 0 && p.home < static_cast<int>(buildings.size()) && buildings[p.home].complete && buildings[p.home].kind == BuildingKind::Shelter) continue;
+        if (p.home >= 0 && p.home < static_cast<int>(buildings.size()) && buildings[p.home].complete && buildings[p.home].condition > 20 && buildings[p.home].kind == BuildingKind::Shelter) continue;
         p.home = -1;
         const auto* partner = person(p.partner);
         if (partner && partner->alive() && partner->home >= 0 && home_occupancy(partner->home) < 4) { p.home = partner->home; continue; }
-        for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Shelter && home_occupancy(b.id) < 4) { p.home = b.id; break; }
+        for (const auto& b : buildings) if (b.complete && b.condition > 20 && b.kind == BuildingKind::Shelter && home_occupancy(b.id) < 4) { p.home = b.id; break; }
     }
     // Couples can move into a spare home, freeing room to raise children.
     for (auto& p : villagers) {
@@ -60,7 +60,7 @@ void World::update_homes() {
         bool dependents = false;
         for (const auto& child : villagers) if (child.alive() && child.child() && (child.parents[0] == p.id || child.parents[1] == p.id)) dependents = true;
         if (dependents) continue;
-        for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Shelter && home_occupancy(b.id) <= 1) {
+        for (const auto& b : buildings) if (b.complete && b.condition > 20 && b.kind == BuildingKind::Shelter && home_occupancy(b.id) <= 1) {
             p.home = partner->home = b.id; break;
         }
     }
@@ -84,7 +84,7 @@ bool World::form_household(int first, int second) {
     if (!a || !b || first == second || !a->alive() || !b->alive() || a->age < 18 || b->age < 18 || a->partner >= 0 || b->partner >= 0
         || a->family_drive < .3 || b->family_drive < .3 || a->relationships[second] < 45 || b->relationships[first] < 45 || close_family(first, second)) return false;
     int home = -1;
-    for (const auto& house : buildings) if (house.complete && house.kind == BuildingKind::Shelter) {
+    for (const auto& house : buildings) if (house.complete && house.condition > 20 && house.kind == BuildingKind::Shelter) {
         const int already_here = (a->home == house.id ? 1 : 0) + (b->home == house.id ? 1 : 0);
         if (home_occupancy(house.id) - already_here <= 2) { home = house.id; break; }
     }
@@ -106,7 +106,7 @@ bool World::have_child(int first, int second) {
         || alive_count() >= population_limit || shelter_capacity() <= alive_count() || day() < next_birth_day || day() - a->last_birth_day < 80 || day() - b->last_birth_day < 80
         || a->home < 0 || a->home >= static_cast<int>(buildings.size()) || a->home != b->home || home_occupancy(a->home) >= 4 || food_stock < std::max(12, (alive_count() + 1) * 2)) return false;
     const auto& house = buildings[a->home];
-    if (!house.complete || house.kind != BuildingKind::Shelter) return false;
+    if (!house.complete || house.condition <= 20 || house.kind != BuildingKind::Shelter) return false;
     Villager baby;
     baby.id = next_person_id++; baby.brain.initialize(seed, baby.id); baby.name = new_name(baby.id); baby.age = 0; baby.hunger = 0; baby.home = house.id;
     baby.x = house.position.x; baby.y = house.position.y; baby.destination = house.position;
@@ -166,7 +166,7 @@ bool World::welcome_migrant() {
     }
     if (path.empty()) return false;
     int home = -1, best = std::numeric_limits<int>::max();
-    for (const auto& b : buildings) if (b.complete && b.kind == BuildingKind::Shelter && home_occupancy(b.id) < 4) {
+    for (const auto& b : buildings) if (b.complete && b.condition > 20 && b.kind == BuildingKind::Shelter && home_occupancy(b.id) < 4) {
         int score = home_occupancy(b.id);
         for (const auto& p : villagers) if (p.alive() && p.home == b.id && p.partner >= 0) score += 10;
         if (score < best) { best = score; home = b.id; }

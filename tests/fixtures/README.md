@@ -36,3 +36,9 @@ version 5 preserves them while initializing replay and work history.
 `518409e`, seed 555, 4,000 updates, built with GCC and Zig respectively. They
 exercise generation/name metadata migration while retaining replay, occupations,
 technology/social/history state. They are synthetic worlds, not player saves.
+
+`version6.lvsave` was written by the actual GCC graphical executable shipped
+with source `12c5d5e`, seed 600, zero simulation updates and name `New Village`.
+`version6-libcxx.lvsave` was written by the same source using Zig 0.13/libc++.
+They test ecology initialization around a saved village without regenerating
+terrain, changing residents or resetting their neural state. Synthetic fixtures.
