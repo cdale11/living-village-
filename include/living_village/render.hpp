@@ -3,12 +3,13 @@
 #include "world.hpp"
 
 namespace village {
-enum class Panel { Map, Menu, Inspector, Overview, Speed, Controls, Tile, Build };
+enum class Panel { Map, Menu, Inspector, Overview, Speed, Controls, Tile, Build, NewVillage };
 struct View {
     double camera_x = 32, camera_y = 32;
     int tile_size = 28, selected = 0, menu_index = 0, speed = 1;
     bool follow = false;
     int inspector_page = 0;
+    int overview_page = 0;
     Point selected_tile{32, 32};
     Panel panel = Panel::Map;
     std::string status = "A living village begins";

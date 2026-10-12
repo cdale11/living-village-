@@ -90,6 +90,8 @@ void Renderer::meter(int x, int y, const std::string& label, double value, SDL_C
 void Renderer::draw(const World& world, const View& view) {
     sdl.SetRenderDrawColor(renderer, 20, 36, 35, 255); sdl.RenderClear(renderer);
     const int size = view.tile_size;
+    const int selected_index = std::clamp(view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
+    const int selected_id = world.villagers[selected_index].id;
     const int left = static_cast<int>(view.camera_x - 360.0 / size) - 1;
     const int top = static_cast<int>(view.camera_y - 240.0 / size) - 1;
     const auto px = [&](double x) { return static_cast<int>(360 + (x - view.camera_x - .5) * size); };
@@ -127,6 +129,7 @@ void Renderer::draw(const World& world, const View& view) {
                     break;
                 case Terrain::Grass: break;
             }
+            if (tile.loose_food + tile.loose_wood + tile.loose_stone > 0) rect(sx + size - unit * 3, sy + size - unit * 3, unit * 2, unit * 2, {220, 190, 124, 255});
         }
     }
     for (Point order : world.gather_orders) {
@@ -183,9 +186,15 @@ void Renderer::draw(const World& world, const View& view) {
     for (const auto& person : world.villagers) {
         const int x = px(person.x + .5), y = py(person.y + .5);
         if (x < -size || x > 720 + size || y < -size || y > 480 + size) continue;
-        const int unit = std::max(2, size / 9);
+        const int unit = std::max(2, size / (person.child() ? 12 : 9));
         rect(x - unit * 2, y + unit * 2, unit * 4, unit, {48, 71, 45, 255});
-        if (!person.alive()) { rect(x - unit * 2, y, unit * 4, unit, {129, 119, 106, 255}); continue; }
+        if (!person.alive()) {
+            if (person.id == selected_id || world.day() - person.death_day <= 3) {
+                rect(x - unit, y, unit * 2, unit, {129, 119, 106, 255});
+                rect(x, y - unit, unit / 2 + 1, unit * 3, {129, 119, 106, 255});
+            }
+            continue;
+        }
         const int walk = person.path.empty() ? 0 : static_cast<int>((world.ticks / 3) % 2);
         rect(x - unit, y + unit, unit, unit * (1 + walk), {55, 55, 58, 255});
         rect(x + 1, y + unit, unit, unit * (2 - walk), {55, 55, 58, 255});
@@ -194,7 +203,7 @@ void Renderer::draw(const World& world, const View& view) {
         rect(x - unit, y - unit * 3, unit * 2, unit / 2 + 1, {89, 66, 48, 255});
         if (person.wood + person.stone > 0) rect(x + unit, y, unit * 2, unit * 2, {185, 144, 83, 255});
         else if (person.food > 0) rect(x + unit, y, unit, unit * 2, {207, 111, 119, 255});
-        if (person.id == view.selected) outline(x - unit * 2 - 2, y - unit * 3 - 2, unit * 4 + 4, unit * 6 + 4, {246, 223, 130, 255});
+        if (person.id == selected_id) outline(x - unit * 2 - 2, y - unit * 3 - 2, unit * 4 + 4, unit * 6 + 4, {246, 223, 130, 255});
     }
     const Uint8 darkness = static_cast<Uint8>((1 - world.daylight()) * 65);
     rect(0, 0, 720, 480, {12, 24, 45, darkness});
@@ -217,26 +226,27 @@ void Renderer::draw(const World& world, const View& view) {
         switch (view.panel) {
             case Panel::Menu: {
                 text(102, 80, "VILLAGE MENU", cream, 3);
-                const char* entries[] = {"Resume", "Save village", "Load village", "Controls", "Save and exit"};
-                for (int i = 0; i < 5; ++i) {
-                    if (view.menu_index == i) rect(96, 128 + i * 40, 528, 32, {63, 89, 73, 255});
-                    text(112, 138 + i * 40, std::string(view.menu_index == i ? "> " : "  ") + entries[i], cream);
+                const char* entries[] = {"Resume", "Save village", "Load village", "Controls", "Save and exit", "New village", "Switch previous village"};
+                for (int i = 0; i < 7; ++i) {
+                    if (view.menu_index == i) rect(96, 122 + i * 32, 528, 28, {63, 89, 73, 255});
+                    text(112, 130 + i * 32, std::string(view.menu_index == i ? "> " : "  ") + entries[i], cream);
                 }
+                text(102, 366, "A SELECT   B BACK", muted);
                 break;
             }
             case Panel::Inspector: {
-                const auto& p = world.villagers.at(view.selected);
+                const auto& p = world.villagers.at(selected_index);
                 text(102, 80, p.name + " - AGE " + std::to_string(p.age), cream, 3);
                 if (view.inspector_page == 0) {
-                    text(102, 122, p.alive() ? std::string(goal_name(p.goal)) + " | SCORE " + std::to_string(static_cast<int>(p.decision_score)) : "Died from hunger", muted);
+                    text(102, 122, p.alive() ? std::string(goal_name(p.goal)) + " | SCORE " + std::to_string(static_cast<int>(p.decision_score)) : "Died: " + p.death_reason, muted);
                     meter(102, 154, "Hunger", p.hunger, {196, 116, 68, 255});
                     meter(102, 182, "Energy", p.energy, {126, 166, 99, 255});
                     meter(102, 210, "Health", p.health, {170, 137, 139, 255});
                     text(102, 246, "Carried: F " + std::to_string(p.food) + " W " + std::to_string(p.wood) + " S " + std::to_string(p.stone), muted);
                     text(102, 276, "WHY: " + p.reason, cream, 2, 504);
-                    if (p.target_id >= 0 && p.goal != Goal::Socialize && p.target_id < static_cast<int>(world.buildings.size())) {
+                    if (p.target_id >= 0 && p.goal != Goal::Socialize && p.goal != Goal::Care && p.goal != Goal::CollectMeal && p.target_id < static_cast<int>(world.buildings.size())) {
                         const auto& b = world.buildings[p.target_id];
-                        if (b.initiator >= 0) text(102, 336, "Project owner: " + world.villagers[b.initiator].name, muted);
+                        if (b.initiator >= 0) text(102, 336, "Project owner: " + (b.initiator_name.empty() ? world.person_name(b.initiator) : b.initiator_name), muted);
                     }
                 } else if (view.inspector_page == 1) {
                     text(102, 122, "PERSONALITY AND SKILLS", muted);
@@ -246,26 +256,60 @@ void Renderer::draw(const World& world, const View& view) {
                     text(102, 248, "Build skill: " + std::to_string(static_cast<int>(p.build_skill * 100)), cream);
                     text(102, 274, "Farm skill: " + std::to_string(static_cast<int>(p.farm_skill * 100)), cream);
                     text(102, 306, "Known food/wood/stone: " + std::to_string(p.known_food.size()) + "/" + std::to_string(p.known_wood.size()) + "/" + std::to_string(p.known_stone.size()), muted);
-                } else {
+                } else if (view.inspector_page == 2) {
                     text(102, 122, "RELATIONSHIPS / EXPERIENCES", muted);
                     int line = 0;
-                    for (const auto& other : world.villagers) if (other.id != p.id && line < 5)
+                    for (const auto& other : world.villagers) if (other.alive() && other.id != p.id && line < 5)
                         text(102, 152 + line++ * 24, other.name + ": " + std::to_string(static_cast<int>(p.relationships[other.id])), cream);
                     for (std::size_t i = p.history.size() > 2 ? p.history.size() - 2 : 0, row = 0; i < p.history.size(); ++i, ++row)
                         text(102, 286 + static_cast<int>(row) * 32, p.history[i], muted, 2, 504);
+                }
+                if (view.inspector_page == 3) {
+                    text(102, 122, "HOUSEHOLD AND FAMILY", muted);
+                    text(102, 152, p.home >= 0 ? "Home: shelter " + std::to_string(world.buildings[p.home].position.x) + "/" + std::to_string(world.buildings[p.home].position.y) : "Home: camp clearing", cream);
+                    text(102, 180, "Partner: " + (p.partner >= 0 ? world.person_name(p.partner) : "None"), cream);
+                    for (int i = 0; i < 2; ++i) {
+                        const auto* parent = world.person(p.parents[i]);
+                        const auto name = p.parent_names[i].empty() ? "Unknown" : p.parent_names[i] + (!parent || !parent->alive() ? " (late)" : "");
+                        text(102, 208 + i * 28, "Parent: " + name, cream, 2, 504);
+                    }
+                    std::string children;
+                    for (const auto& child : world.villagers) if (child.alive() && (child.parents[0] == p.id || child.parents[1] == p.id)) {
+                        if (!children.empty()) children += " / ";
+                        children += child.name;
+                    }
+                    text(102, 268, "Children: " + (children.empty() ? "None" : children.substr(0, 70)), cream, 2, 504);
+                    text(102, 318, "Family drive: " + std::to_string(static_cast<int>(p.family_drive * 100)), muted);
+                    text(102, 342, p.alive() ? "Birthday in " + std::to_string(days_per_year - p.age_days) + " days" : "Remembered since day " + std::to_string(p.death_day), muted);
                 }
                 text(102, 366, "LEFT/RIGHT DETAILS   L1/R1 PEOPLE", muted);
                 break;
             }
             case Panel::Overview: {
-                text(102, 80, "VILLAGE LIFE", cream, 3);
-                int finished = 0; for (const auto& b : world.buildings) if (b.complete) ++finished;
-                text(102, 122, "Built " + std::to_string(finished) + " | Plans " + std::to_string(world.buildings.size() - finished) + " | Beds " + std::to_string(world.shelter_capacity()), muted);
-                text(102, 150, "A: AUTO PLANS " + std::string(world.auto_develop ? "ON" : "OFF"), cream);
-                for (std::size_t i = world.events.size() > 4 ? world.events.size() - 4 : 0, line = 0; i < world.events.size(); ++i, ++line)
-                    text(102, 192 + static_cast<int>(line) * 42, world.events[i], cream, 2, 504);
-                break;
+                text(102, 80, view.overview_page == 0 ? "VILLAGE LIFE" : view.overview_page == 1 ? "POPULATION" : "VILLAGE HISTORY", cream, 3);
+                if (view.overview_page == 0) {
+                    int finished = 0; for (const auto& b : world.buildings) if (b.complete) ++finished;
+                    text(102, 126, "Built " + std::to_string(finished) + " | Plans " + std::to_string(world.buildings.size() - finished), muted);
+                    text(102, 164, "Residents " + std::to_string(world.alive_count()) + " | Beds " + std::to_string(world.shelter_capacity()), cream);
+                    text(102, 208, "A: AUTO PLANS " + std::string(world.auto_develop ? "ON" : "OFF"), cream);
+                    text(102, 256, "Left/right: population and event log", muted, 2, 504);
+                } else if (view.overview_page == 1) {
+                    text(102, 126, "Adults " + std::to_string(world.alive_count() - world.child_count()) + " | Children " + std::to_string(world.child_count()), cream);
+                    text(102, 164, "Births " + std::to_string(world.births) + " | Arrivals " + std::to_string(world.arrivals), cream);
+                    text(102, 202, "Deaths " + std::to_string(world.deaths) + " | Year " + std::to_string(1 + (world.day() - 1) / days_per_year), muted);
+                    text(102, 248, "A: NEW BIRTHS/ARRIVALS " + std::string(world.population_growth ? "ON" : "OFF"), cream);
+                    text(102, 294, world.growth_status(), muted, 2, 504);
+                } else {
+                    for (std::size_t i = world.events.size() > 4 ? world.events.size() - 4 : 0, line = 0; i < world.events.size(); ++i, ++line)
+                        text(102, 126 + static_cast<int>(line) * 54, world.events[i], cream, 2, 504);
+                }
+                text(102, 366, "LEFT/RIGHT PAGES   B BACK", muted); break;
             }
+            case Panel::NewVillage:
+                text(102, 80, "START A NEW VILLAGE", cream, 3);
+                text(102, 144, "Your current village is kept in the previous-village save slot.", cream, 2, 504);
+                text(102, 222, "You can switch back from the menu.", muted, 2, 504);
+                text(102, 314, "A START FRESH   B CANCEL", cream); break;
             case Panel::Tile: {
                 const auto at = view.selected_tile;
                 const auto& cell = world.tile(at.x, at.y);
@@ -281,16 +325,18 @@ void Renderer::draw(const World& world, const View& view) {
                         text(102, 202, "Wood " + std::to_string(b.wood_delivered) + "/" + std::to_string(cost.wood) + " | Stone " + std::to_string(b.stone_delivered) + "/" + std::to_string(cost.stone), cream);
                         text(102, 236, "Work " + std::to_string(static_cast<int>(b.work)) + "/" + std::to_string(static_cast<int>(cost.work)), cream);
                         text(102, 278, b.supplied() ? "Materials ready - needs builders" : "Villagers gather and deliver supplies", muted);
-                        int contributors = 0;
-                        for (unsigned bits = b.contributors; bits != 0; bits >>= 1) contributors += bits & 1U;
-                        text(102, 312, "Contributors: " + std::to_string(contributors), muted);
-                    } else if (b.kind == BuildingKind::Shelter) text(102, 202, "Four beds - faster rest", cream);
+                        text(102, 312, "Contributors: " + std::to_string(b.contributors.size()), muted);
+                    } else if (b.kind == BuildingKind::Shelter) {
+                        text(102, 202, "Four beds - faster rest", cream);
+                        text(102, 244, "Residents: " + std::to_string(world.home_occupancy(b.id)) + "/4", muted);
+                    }
                     else if (b.kind == BuildingKind::Farm) text(102, 202, "Ripe food " + std::to_string(b.food) + "/12 - renewable crops", cream);
                     else if (b.kind == BuildingKind::FoodStorage) text(102, 202, "Adds 40 to shared food capacity", cream);
                     else if (b.kind == BuildingKind::Stockpile) text(102, 202, "Adds 20 to wood and stone capacity", cream);
                     else text(102, 202, b.fuel > 0 ? "Lit - warmth and social comfort" : "No fuel - needs shared wood", cream);
                 } else {
                     text(102, 172, "Food " + std::to_string(cell.food) + " | Wood " + std::to_string(cell.wood) + " | Stone " + std::to_string(cell.stone), cream);
+                    if (cell.loose_food + cell.loose_wood + cell.loose_stone > 0) text(102, 198, "Loose F " + std::to_string(cell.loose_food) + " W " + std::to_string(cell.loose_wood) + " S " + std::to_string(cell.loose_stone), muted);
                     const bool resource = cell.terrain == Terrain::Tree || cell.terrain == Terrain::Stone || cell.terrain == Terrain::Bush;
                     const bool designated = std::find(world.gather_orders.begin(), world.gather_orders.end(), at) != world.gather_orders.end();
                     text(102, 232, world.can_plan(at) ? "A: PLACE A CONSTRUCTION PLAN" : resource ? (designated ? "A: CANCEL GATHERING AREA" : "A: DESIGNATE GATHERING AREA") : "Plans need reachable empty grass", muted, 2, 504);

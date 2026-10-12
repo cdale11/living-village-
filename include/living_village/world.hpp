@@ -3,15 +3,17 @@
 #include <cstdint>
 #include <deque>
 #include <random>
+#include <map>
 #include <string>
 #include <vector>
 
 namespace village {
 constexpr int map_size = 64;
 constexpr double fixed_step = 0.1;
+constexpr int population_limit = 20, dead_history_limit = 32, days_per_year = 40;
 enum class Terrain : int { Grass, Tree, Stone, Water, Bush };
-enum class Goal : int { Explore, Forage, Eat, Rest, GatherWood, CollectStone, DeliverMaterials, TakeMaterials, Build, TendFarm, DeliverFood, StoreMaterials, Socialize, RefuelFire };
-struct Tile { Terrain terrain = Terrain::Grass; int food = 0; double regrowth = 0; int wood = 0, stone = 0; };
+enum class Goal : int { Explore, Forage, Eat, Rest, GatherWood, CollectStone, DeliverMaterials, TakeMaterials, Build, TendFarm, DeliverFood, StoreMaterials, Socialize, RefuelFire, Arrive, Play, Care, CollectMeal, WaitForCare };
+struct Tile { Terrain terrain = Terrain::Grass; int food = 0; double regrowth = 0; int wood = 0, stone = 0; int loose_food = 0, loose_wood = 0, loose_stone = 0; };
 struct Point { int x = 0, y = 0; bool operator==(const Point& b) const { return x == b.x && y == b.y; } };
 constexpr Point camp{32, 32};
 enum class BuildingKind : int { Shelter, FoodStorage, Stockpile, Farm, Campfire };
@@ -23,7 +25,9 @@ struct Building {
     int wood_delivered = 0, stone_delivered = 0, initiator = -1;
     double work = 0, growth = 0, fuel = 0;
     int food = 0;
-    std::uint32_t contributors = 0;
+    std::vector<int> contributors;
+    std::string initiator_name;
+    void contribute(int person_id);
     int wood_needed() const;
     int stone_needed() const;
     bool supplied() const;
@@ -31,6 +35,11 @@ struct Building {
 struct BuildingCost { int wood, stone; double work; };
 BuildingCost building_cost(BuildingKind kind);
 const char* building_name(BuildingKind kind);
+struct Relationships {
+    std::map<int, double> values;
+    double operator[](int id) const;
+    double& operator[](int id);
+};
 struct Villager {
     int id = 0;
     std::string name;
@@ -42,7 +51,13 @@ struct Villager {
     double cooperation = 0.5, loneliness = 10;
     double decision_score = 0;
     double gather_skill = 0, build_skill = 0, farm_skill = 0;
-    std::array<double, 20> relationships{};
+    Relationships relationships;
+    int age_days = 0, home = -1, partner = -1;
+    std::array<int, 2> parents{{-1, -1}};
+    std::array<std::string, 2> parent_names;
+    int last_birth_day = -1000, death_day = 0;
+    std::string death_reason;
+    double family_drive = 0.5;
     std::deque<std::string> history;
     Goal goal = Goal::Explore;
     int target_id = -1;
@@ -53,6 +68,7 @@ struct Villager {
     std::vector<Point> known_wood, known_stone;
     std::string reason = "Looking for nearby resources";
     bool alive() const { return health > 0; }
+    bool child() const { return age < 16; }
 };
 
 class World {
@@ -64,6 +80,9 @@ public:
     int wood_stock = 0, stone_stock = 0;
     int simulation_speed = 1;
     bool auto_develop = true, food_shortage = false;
+    bool population_growth = true;
+    int next_person_id = 6, next_migration_day = 12, next_birth_day = 8;
+    std::uint64_t births = 0, arrivals = 0, deaths = 0;
     std::array<Tile, map_size * map_size> tiles{};
     std::vector<Villager> villagers;
     std::vector<Building> buildings;
@@ -82,6 +101,17 @@ public:
     int material_capacity() const;
     int shelter_capacity() const;
     int alive_count() const;
+    int child_count() const;
+    int home_occupancy(int building_id) const;
+    Villager* person(int id);
+    const Villager* person(int id) const;
+    std::string person_name(int id) const;
+    bool form_household(int first, int second);
+    bool have_child(int first, int second);
+    bool welcome_migrant();
+    bool supports_newcomer() const;
+    bool kill(int id, const std::string& reason);
+    std::string growth_status() const;
     int building_at(Point point) const;
     bool can_plan(Point point) const;
     bool plan(BuildingKind kind, Point point, int initiator = -1);
@@ -96,6 +126,11 @@ private:
     void execute(Villager& person, double dt);
     void discover(Villager& person);
     void update_needs();
+    void update_homes();
+    void update_population();
+    void prune_history();
+    bool close_family(int first, int second) const;
+    std::string new_name(int id) const;
     void remember(Villager& person, const std::string& experience);
     double growing_rate() const;
     int random(int maximum);

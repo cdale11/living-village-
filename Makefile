@@ -3,7 +3,7 @@ BUILD ?= build
 CPPFLAGS += -Iinclude -Ivendor/SDL2
 CXXFLAGS ?= -O2 -g
 CXXFLAGS += -std=c++17 -Wall -Wextra -Wpedantic
-CORE = src/world.cpp src/buildings.cpp src/saves.cpp
+CORE = src/world.cpp src/buildings.cpp src/population.cpp src/saves.cpp
 GAME = $(CORE) src/main.cpp src/sdl.cpp src/input.cpp src/render.cpp src/ui.cpp
 HEADERS = $(wildcard include/living_village/*.hpp)
 
@@ -22,9 +22,13 @@ $(BUILD)/simulation-tests: tests/simulation_test.cpp $(CORE) src/ui.cpp $(HEADER
 $(BUILD)/development-tests: tests/development_test.cpp $(CORE) src/ui.cpp $(HEADERS) | $(BUILD)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/development_test.cpp $(CORE) src/ui.cpp -o $@ $(LDFLAGS)
 
-test: $(BUILD)/simulation-tests $(BUILD)/development-tests
+$(BUILD)/population-tests: tests/population_test.cpp $(CORE) src/ui.cpp $(HEADERS) | $(BUILD)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/population_test.cpp $(CORE) src/ui.cpp -o $@ $(LDFLAGS)
+
+test: $(BUILD)/simulation-tests $(BUILD)/development-tests $(BUILD)/population-tests
 	./$(BUILD)/simulation-tests
 	./$(BUILD)/development-tests
+	./$(BUILD)/population-tests
 
 $(BUILD)/input-tests: tests/input_test.cpp src/input.cpp src/sdl.cpp $(HEADERS) | $(BUILD)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) tests/input_test.cpp src/input.cpp src/sdl.cpp -o $@ $(LDFLAGS) -ldl

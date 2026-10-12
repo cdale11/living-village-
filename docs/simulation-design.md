@@ -3,8 +3,8 @@
 Villagers have names/IDs, ages, hunger, energy, health, curiosity, cooperation,
 loneliness, food/wood/stone inventories, gathering/building/farming skills,
 relationships, goals, paths, decision utility scores/reasons, resource memories
-and six recent significant experiences. Age is initialized but does not advance;
-families, births and occupations are future work.
+and six recent significant experiences. Households, inherited traits, child care,
+ageing and migration are documented in [population rules](population.md).
 
 ## Decisions and cooperation
 
@@ -70,7 +70,8 @@ full. At most two automatically requested projects are pending at once. Plans
 use reachable clear land near camp. Farm demand scales with living population;
 an abundant berry settlement may prefer storage rather than crops. The player
 can disable automatic *new* plans in the overview; existing plans still receive
-agent work. No automatic births or migration are added in this milestone.
+agent work. When population growth is enabled and food is sufficient, shelter
+planning anticipates up to four extra residents, capped at 20.
 
 Player plans can be placed on reachable empty grass using A at the camera
 reticle. Up to 64 buildings/plans are supported. A on a tree, bush or stone tile
@@ -86,7 +87,8 @@ four agents assigned to each shelter at a time.
 
 ## Survival, ecology and society
 
-Hunger rises by 0.12 and energy falls by 0.065 per second. A one-second eating
+Adult hunger rises by 0.12 and energy falls by 0.065 per second. Children
+have lower rates, described in the population rules. A one-second eating
 action consumes one food and reduces hunger by 45. Rest recovers 1.8 energy per
 second at camp, 3.2 inside completed shelter or 0.8 elsewhere, with 0.3 extra
 near a fuelled fire. Hunger 99+ reduces health by 0.25 per second; otherwise
@@ -115,15 +117,18 @@ Relationships are bounded and each villager keeps six significant experiences.
 
 ## Persistence and bounds
 
-Version 2 saves record all resources, buildings, invested materials, progress,
+Version 3 saves record all resources, buildings, invested materials, progress,
 contributors, crops, fuel, gathering areas, skills, relationships, experiences,
 goals/targets, paths, memories, settings and PRNG state. Version 1 saves upgrade
 on load, preserving old villagers/time/inventories/terrain/goals/PRNG and adding
 new resource quantities to existing trees/stone, plus the camp structures.
+Version 2 saves preserve village development state and acquire stable identity
+and household metadata. Version 3 also records family state, growth settings,
+birth/arrival/death counters and recoverable supplies left at death locations.
 The existing checksum, atomic rename/flush and validated backup remain.
 
 Memories cap at 48 locations per resource per villager; shared events at 24;
-buildings at 64; gathering areas at 16; population at 20 in the save format.
+buildings at 64; gathering areas at 16; population at 20 living plus 32 archived deceased.
 Tests cover deterministic continuation, version 1 migration, resource budgets,
 real cooperative delivery, unsupplied construction, building effects,
 designations, seasons, controller planning, 20 active villagers and 300 days

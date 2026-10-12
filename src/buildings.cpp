@@ -50,9 +50,10 @@ bool World::can_plan(Point point) const {
     return !route(camp, point).empty();
 }
 bool World::plan(BuildingKind kind, Point point, int initiator) {
-    if (static_cast<int>(kind) < 0 || static_cast<int>(kind) > 4 || initiator < -1 || initiator >= static_cast<int>(villagers.size()) || !can_plan(point)) return false;
+    if (static_cast<int>(kind) < 0 || static_cast<int>(kind) > 4 || initiator < -1 || (initiator >= 0 && !person(initiator)) || !can_plan(point)) return false;
     Building site;
     site.id = static_cast<int>(buildings.size()); site.kind = kind; site.position = point; site.initiator = initiator;
+    if (initiator >= 0) site.initiator_name = person_name(initiator);
     buildings.push_back(site);
     event(std::string("New plan: ") + building_name(kind));
     return true;
@@ -78,9 +79,10 @@ void World::update_needs() {
         if (b.kind == BuildingKind::FoodStorage) ++stores;
     }
     if (pending >= 2) return;
+    const int wanted_shelter = std::min(population_limit, alive_count() + (population_growth && food_stock >= std::max(12, alive_count() * 2) ? 4 : 0));
     BuildingKind needed;
     if (food_stock < 12 && farms < (alive_count() + 2) / 3) needed = BuildingKind::Farm;
-    else if (future_shelter < alive_count()) needed = BuildingKind::Shelter;
+    else if (future_shelter < wanted_shelter) needed = BuildingKind::Shelter;
     else if (food_stock >= food_capacity() * 3 / 4 && stores == 0) needed = BuildingKind::FoodStorage;
     else return;
     // Search a bounded ring around camp; request arises from current needs.

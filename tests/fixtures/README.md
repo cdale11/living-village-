@@ -12,3 +12,11 @@ The development test chooses the fixture matching its standard library, checks
 preserved villagers/time/PRNG, runs the upgraded village, and verifies version
 2 save continuation. Cross-standard-library save exchange is not promised;
 upgrading a KNULLI installation uses the same bundled C++ runtime as before.
+
+`version2.lvsave` and `version2-libcxx.lvsave` were produced by the actual
+village-development source at commit 14499d5, using GCC and Zig/libc++
+respectively. Seed 123 was advanced 5000 steps, then automatic construction
+was disabled, speed set to 4 and a gathering area designated at 26/30. These
+exercise v2-to-v3 migration with real building work, contributor credit,
+resource changes, relationships, and settings. Fixtures are synthetic test
+villages, not copied from a physical handheld or a player's save.

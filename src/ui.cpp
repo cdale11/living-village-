@@ -6,7 +6,10 @@
 namespace village {
 void Interface::cycle(const World& world, int direction) {
     const int count = static_cast<int>(world.villagers.size());
-    view.selected = (view.selected + count + direction) % count;
+    for (int attempts = 0; attempts < count; ++attempts) {
+        view.selected = (view.selected + count + direction) % count;
+        if (world.villagers[view.selected].alive()) break;
+    }
     view.camera_x = world.villagers[view.selected].x;
     view.camera_y = world.villagers[view.selected].y;
     view.follow = true;
@@ -16,7 +19,7 @@ Request Interface::update(const InputState& input, const World& world, double el
     view.selected = std::clamp(view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
     if (input.hit(Button::Menu)) { view.panel = view.panel == Panel::Map ? Panel::Menu : Panel::Map; view.menu_index = 0; }
     else if (input.hit(Button::Back)) {
-        view.panel = view.panel == Panel::Controls ? Panel::Menu : view.panel == Panel::Build ? Panel::Tile : Panel::Map;
+        view.panel = (view.panel == Panel::Controls || view.panel == Panel::NewVillage) ? Panel::Menu : view.panel == Panel::Build ? Panel::Tile : Panel::Map;
         view.menu_index = 0;
     } else if (input.hit(Button::Speed)) {
         view.panel = Panel::Speed; view.menu_index = view.speed == 1 ? 0 : view.speed == 2 ? 1 : 2;
@@ -29,14 +32,18 @@ Request Interface::update(const InputState& input, const World& world, double el
     repeat -= elapsed;
     if (std::abs(input.y) < .5) repeat = 0;
     if ((view.panel == Panel::Menu || view.panel == Panel::Speed || view.panel == Panel::Build) && std::abs(input.y) >= .5 && repeat <= 0) {
-        const int count = view.panel == Panel::Speed ? 3 : 5;
+        const int count = view.panel == Panel::Speed ? 3 : view.panel == Panel::Menu ? 7 : 5;
         view.menu_index = (view.menu_index + count + (input.y > 0 ? 1 : -1)) % count;
         repeat = .2;
     }
     page_repeat -= elapsed;
     if (std::abs(input.x) < .5) page_repeat = 0;
     if (view.panel == Panel::Inspector && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.inspector_page = (view.inspector_page + 3 + (input.x > 0 ? 1 : -1)) % 3;
+        view.inspector_page = (view.inspector_page + 4 + (input.x > 0 ? 1 : -1)) % 4;
+        page_repeat = .2;
+    }
+    if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
+        view.overview_page = (view.overview_page + 3 + (input.x > 0 ? 1 : -1)) % 3;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
@@ -58,6 +65,8 @@ Request Interface::update(const InputState& input, const World& world, double el
                 case 2: return Request::Load;
                 case 3: view.panel = Panel::Controls; break;
                 case 4: return Request::Exit;
+                case 5: view.panel = Panel::NewVillage; break;
+                case 6: return Request::PreviousVillage;
             }
         } else if (view.panel == Panel::Speed) {
             view.speed = 1 << view.menu_index; view.panel = Panel::Map;
@@ -67,7 +76,8 @@ Request Interface::update(const InputState& input, const World& world, double el
         } else if (view.panel == Panel::Tile && world.can_plan(view.selected_tile)) { view.panel = Panel::Build; view.menu_index = 0; }
         else if (view.panel == Panel::Tile && world.building_at(view.selected_tile) < 0) return Request::Designate;
         else if (view.panel == Panel::Build) return Request::Plan;
-        else if (view.panel == Panel::Overview) return Request::ToggleDevelopment;
+        else if (view.panel == Panel::Overview && view.overview_page < 2) return view.overview_page == 0 ? Request::ToggleDevelopment : Request::ToggleGrowth;
+        else if (view.panel == Panel::NewVillage) return Request::NewVillage;
     }
     return Request::None;
 }

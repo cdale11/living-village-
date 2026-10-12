@@ -75,7 +75,7 @@ int main() {
         check(menu.update(press, world, .033) == Request::Save, "Controller save menu did not activate");
         menu.view.panel = Panel::Menu; menu.view.menu_index = 4;
         check(menu.update(press, world, .033) == Request::Exit, "Controller exit did not activate");
-        for (Panel panel : {Panel::Map, Panel::Menu, Panel::Inspector, Panel::Overview, Panel::Speed, Panel::Controls, Panel::Tile, Panel::Build}) {
+        for (Panel panel : {Panel::Map, Panel::Menu, Panel::Inspector, Panel::Overview, Panel::Speed, Panel::Controls, Panel::Tile, Panel::Build, Panel::NewVillage}) {
             menu.view.panel = panel;
             press = {}; press.exit_requested = true;
             press.pressed[static_cast<int>(Button::Menu)] = true;
@@ -83,6 +83,7 @@ int main() {
         }
 
         World long_run(123);
+        long_run.population_growth = false;
         advance(long_run, 2400 * 300);
         for (const auto& p : long_run.villagers) {
             check(p.alive(), "Reasonable starting conditions failed long-term survival");

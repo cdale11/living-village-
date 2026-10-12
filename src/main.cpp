@@ -2,6 +2,7 @@
 #include "living_village/render.hpp"
 #include "living_village/saves.hpp"
 #include "living_village/ui.hpp"
+#include <algorithm>
 #include <chrono>
 #include <csignal>
 #include <filesystem>
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
             int survivors = 0; for (const auto& p : world.villagers) if (p.alive()) ++survivors;
             int built = 0; for (const auto& b : world.buildings) if (b.complete) ++built;
             std::cout << "Headless: " << config.steps << " steps, day " << world.day() << ", " << survivors
-                      << " alive, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, peak RSS " << usage.ru_maxrss << " KiB\n";
+                      << " alive (" << world.child_count() << " children), " << world.births << " births, " << world.arrivals << " arrivals, " << world.deaths << " deaths, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, peak RSS " << usage.ru_maxrss << " KiB\n";
             return 0;
         }
         const auto save_path = std::filesystem::path(config.save_dir) / "village.lvsave";
@@ -131,14 +132,39 @@ int main(int argc, char** argv) {
             } else if (request == Request::ToggleDevelopment) {
                 world.auto_develop = !world.auto_develop;
                 ui.view.status = world.auto_develop ? "Autonomous development enabled" : "Only player construction plans enabled";
+            } else if (request == Request::ToggleGrowth) {
+                world.population_growth = !world.population_growth;
+                ui.view.status = world.population_growth ? "New births and arrivals enabled" : "New births and arrivals paused";
+            } else if (request == Request::NewVillage) {
+                try {
+                    if (!config.no_save) save_atomic(world, std::filesystem::path(config.save_dir) / "previous-village.lvsave");
+                    world = World(world.seed + 1); ui = Interface{};
+                    if (save()) ui.view.status = "New village - earlier village archived";
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "COULD NOT ARCHIVE - KEPT CURRENT VILLAGE"; }
+            } else if (request == Request::PreviousVillage) {
+                try {
+                    const auto archived_path = std::filesystem::path(config.save_dir) / "previous-village.lvsave";
+                    World archived = load_save(archived_path);
+                    if (!config.no_save) save_atomic(world, archived_path);
+                    world = std::move(archived); ui = Interface{}; ui.view.speed = world.simulation_speed;
+                    if (save()) ui.view.status = "Switched to previous village";
+                } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = "NO PREVIOUS VILLAGE AVAILABLE"; }
             } else if (request == Request::Designate) {
                 ui.view.status = world.designate(ui.view.selected_tile) ? "Gathering area updated" : "Choose a tree, bush or stone - max 16 areas";
             }
+            ui.view.selected = std::clamp(ui.view.selected, 0, static_cast<int>(world.villagers.size()) - 1);
+            const int watched_id = world.villagers[ui.view.selected].id;
             if (ui.view.panel == Panel::Map) {
                 accumulator += elapsed * ui.view.speed;
                 int steps = 0;
                 while (accumulator >= fixed_step && steps++ < 8) { world.update(); accumulator -= fixed_step; }
             } else accumulator = 0;
+            bool found = false;
+            for (std::size_t index = 0; index < world.villagers.size(); ++index) if (world.villagers[index].id == watched_id) { ui.view.selected = static_cast<int>(index); found = true; break; }
+            if (!found) {
+                ui.view.selected = 0;
+                for (std::size_t index = 0; index < world.villagers.size(); ++index) if (world.villagers[index].alive()) { ui.view.selected = static_cast<int>(index); break; }
+            }
             if (begin - last_save >= 30000) save();
             graphics.draw(world, ui.view);
             ++frame_count;

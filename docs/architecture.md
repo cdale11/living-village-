@@ -4,8 +4,9 @@
 `world.cpp` contains resource discovery, utility decisions, action execution,
 movement, needs, relationships and ecology. `buildings.cpp` contains building
 recipes, capacity/effect queries, placement validation and shared need-driven
-planning. `saves.cpp` records full state and migrates version 1 saves to version
-2. Headless runs and tests use the same simulation as the graphical game.
+planning. `population.cpp` handles homes, households, births, arrivals, ageing
+and deaths. `saves.cpp` records full state and migrates version 1/2 saves to
+version 3. Headless runs and tests use the same simulation as the graphical game.
 
 `main.cpp` feeds fixed 0.1-second steps. Rendering targets 30 FPS. Speed 4×
 advances four times as many steps. Stalls are bounded to 0.2 seconds and at most
@@ -28,8 +29,10 @@ The map is a 4096-tile array. BFS visits each cell once with bounded arrays.
 Movement traverses at most four path edges per update. Memory is capped at 48
 locations per resource per agent, history at six experiences per agent and 24
 shared events. Plans/buildings cap at 64 and gathering areas at 16. Save reads
-cap at 2 MiB; population data caps at 20. The default population remains six;
-20-agent regression scenarios verify initial scalability without adding births.
+cap at 2 MiB; population caps at 20 living and 32 archived deceased villagers. Stable IDs
+never reuse deceased identities. Sparse relationships cap at 32 entries and
+construction contributor histories at 64. The default population begins at six;
+3,500-day regression tests cover generational turnover.
 
 Platform paths/optional SDL overrides stay in the Ports launcher. All handheld
 writes stay on /userdata; no OS package installs occur. ROCKNIX still needs a

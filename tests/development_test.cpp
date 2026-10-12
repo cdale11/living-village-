@@ -43,7 +43,7 @@ int main() {
         const auto& completed = construction.buildings.back();
         check(completed.complete && completed.work == building_cost(completed.kind).work, "Supplied agents did not finish construction");
         check(available_materials(construction) == 0 && completed.wood_delivered == 12 && completed.stone_delivered == 4, "Construction did not consume its exact material cost");
-        check((completed.contributors & (completed.contributors - 1)) != 0, "Construction lacked multiple contributors");
+        check(completed.contributors.size() >= 2, "Construction lacked multiple contributors");
         check(construction.shelter_capacity() == 4, "Shelter did not add beds");
 
         World farm(7); clearing(farm); farm.villagers.resize(1);
@@ -53,6 +53,7 @@ int main() {
         advance(farm, 1500);
         check(plot.food > 0 && plot.food <= 12, "Farm did not produce renewable food");
         auto& farmer = farm.villagers[0]; farmer.health = 100; farmer.hunger = 0; farmer.food = 0;
+        farmer.death_day = 0; farmer.death_reason.clear();
         farmer.goal = Goal::TendFarm; farmer.target_id = plot.id; farmer.x = 30; farmer.y = 30; farmer.decision_timer = 5;
         int crop_before = plot.food;
         advance(farm, 32);
@@ -103,7 +104,7 @@ int main() {
         old_header >> magic >> version >> old_seed >> old_ticks >> old_food >> old_rng;
         check(migrated.seed == old_seed && migrated.ticks == old_ticks && migrated.rng == old_rng, "Migration changed seed/time/random state");
         check(migrated.villagers[0].name == "Mira" && migrated.villagers[0].x == 31 && migrated.villagers[0].y == 30 && migrated.villagers[0].hunger == 15 && migrated.villagers[0].energy == 90, "Migration changed existing villager needs/position");
-        check(migrated.serialize().find("LIVING_VILLAGE 2\n") == 0, "Migrated save did not upgrade to version 2");
+        check(migrated.serialize().find("LIVING_VILLAGE 3\n") == 0, "Migrated save did not upgrade to version 3");
         check(World::deserialize(migrated.serialize()).serialize() == migrated.serialize(), "Migrated save did not round-trip");
         advance(migrated, 3000); check(migrated.alive_count() == 6 && migrated.buildings.size() > 2, "Migrated village failed to develop");
         construction.simulation_speed = 4;
@@ -112,10 +113,10 @@ int main() {
         advance(construction, 1000); advance(restored, 1000);
         check(construction.serialize() == restored.serialize(), "Development save continuation diverged");
 
-        World village(123); advance(village, 24000);
+        World village(123); village.population_growth = false; advance(village, 24000);
         check(village.alive_count() == 6 && village.shelter_capacity() >= 6, "Autonomous village failed to provide shelter");
         int contributors = 0;
-        for (const auto& b : village.buildings) if (b.complete && b.contributors != 0) ++contributors;
+        for (const auto& b : village.buildings) if (b.complete && !b.contributors.empty()) ++contributors;
         check(contributors >= 3, "Shared needs did not produce cooperative development");
         World farm_need(123); farm_need.food_stock = 0; advance(farm_need, 24000);
         int farms = 0; for (const auto& b : farm_need.buildings) if (b.complete && b.kind == BuildingKind::Farm) ++farms;

@@ -14,9 +14,10 @@ A on the map examines the tile under the reticle. A on reachable empty grass
 opens the five construction recipes; D-pad up/down selects, A places the plan,
 and B cancels. A on a tree/bush/stone toggles a gathering designation. A on an
 existing building panel shows its costs, progress or completed gameplay effect.
-In the villager inspector, left/right cycles three pages: needs/reason, skills
-and personality, relationships and recent experiences. Y opens the overview,
-where A toggles autonomous new planning. L1/R1 changes the inspected villager.
+In the villager inspector, left/right cycles four pages: needs/reason, skills
+and personality, relationships and recent experiences, household and family. Y opens the overview,
+where left/right selects village, population or history. A on village toggles
+autonomous new planning; A on population toggles births and arrivals. L1/R1 changes the inspected villager.
 
 ## Fn+Start exit
 
@@ -37,3 +38,7 @@ raw controllers, Start defaults to the configured `menu` button.
 `mapped_hotkey=5` selects SDL Guide and can be remapped separately. Existing
 configs work without adding these keys. Desktop F10+Space tests the same
 save-and-exit request. Use `--diagnose-input` if physical Fn is not recognized.
+
+Start → New village requires confirmation and archives the current village.
+Start → Switch to previous village swaps the two villages. Saves remain in
+`village.lvsave` and `previous-village.lvsave`, each with a backup.
