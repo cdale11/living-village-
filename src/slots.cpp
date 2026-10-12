@@ -27,7 +27,7 @@ SaveSlot describe(const std::filesystem::path& path, const std::string& id) {
     try {
         std::ifstream in(info.backup_only ? path.string() + ".bak" : path.string());
         std::istringstream header(short_line(in)); std::string magic; int version = 0; header >> magic >> version;
-        if (magic != "LIVING_VILLAGE" || version < 1 || version > 7) return info;
+        if (magic != "LIVING_VILLAGE" || version < 1 || version > 8) return info;
         std::istringstream state(short_line(in)); std::uint64_t ticks = 0; int food = 0; state >> info.seed >> ticks >> food;
         if (state.fail() || ticks >= 100000000000ULL) return info;
         info.day = 1 + static_cast<int>(ticks / 2400);

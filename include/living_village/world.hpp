@@ -1,5 +1,6 @@
 #pragma once
 #include "brain.hpp"
+#include "director.hpp"
 #include <array>
 #include <cstdint>
 #include <deque>
@@ -211,6 +212,9 @@ public:
     std::string serialize() const;
     static World deserialize(const std::string& data);
     BrainInput observations(const Villager& person, Goal goal, Point destination, double utility) const;
+    Director director;
+    void update_director();
+    void cycle_director();
     bool research_available() const;
     int research_wood_needed(const Building& workshop) const;
     int research_stone_needed(const Building& workshop) const;

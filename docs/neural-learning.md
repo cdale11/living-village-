@@ -94,7 +94,7 @@ atomic writes, checksums and backup recovery remain. Save validation bounds
 weights, observations and statistics and rejects non-finite values or a
 mismatched network schema. Versions 1–3 load automatically with fresh neural
 models; version 4 preserves its trained weights and pending experiences; their established world state is retained. Back up saves before upgrade;
-older binaries cannot read version 7.
+older binaries cannot read version 8.
 
 `make test` includes learned action-selection changes, successful/failed outcome
 discrimination, reward reversal/relearning, deterministic backpropagation, independent residents, live

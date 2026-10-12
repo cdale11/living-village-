@@ -117,7 +117,7 @@ Request Interface::update(const InputState& input, const World& world, double el
         page_repeat = .2;
     }
     if (view.panel == Panel::Overview && std::abs(input.x) >= .5 && page_repeat <= 0) {
-        view.overview_page = (view.overview_page + 9 + (input.x > 0 ? 1 : -1)) % 9;
+        view.overview_page = (view.overview_page + 10 + (input.x > 0 ? 1 : -1)) % 10;
         page_repeat = .2;
     }
     if (view.panel == Panel::Map) {
@@ -158,10 +158,14 @@ Request Interface::update(const InputState& input, const World& world, double el
         } else if (view.panel == Panel::Tile && world.can_plan(view.selected_tile)) { view.panel = Panel::Build; view.menu_index = 0; }
         else if (view.panel == Panel::Tile && world.building_at(view.selected_tile) < 0) return Request::Designate;
         else if (view.panel == Panel::Build) return Request::Plan;
+        else if (view.panel == Panel::Overview && view.overview_page == 9) return Request::DirectorMode;
         else if (view.panel == Panel::Overview && view.overview_page < 2) return view.overview_page == 0 ? Request::ToggleDevelopment : Request::ToggleGrowth;
         else if (view.panel == Panel::Overview && (view.overview_page == 3 || view.overview_page == 8)) return Request::ToggleLearning;
         else if (view.panel == Panel::Overview && view.overview_page == 4) return Request::ExportHistory;
         else if (view.panel == Panel::Overview && view.overview_page == 5) return Request::Volume;
+        else if (view.panel == Panel::Overview && view.overview_page == 6) {
+            view.ecology_overlay = (view.ecology_overlay + 1) % 4; view.panel = Panel::Map;
+        }
         else if (view.panel == Panel::Overview && view.overview_page == 7 && !world.animals.empty()) {
             const auto& a = world.animals[std::clamp(view.selected_animal, 0, static_cast<int>(world.animals.size()) - 1)];
             view.watched_animal_id = a.id; view.camera_x = a.x; view.camera_y = a.y; view.follow = false;

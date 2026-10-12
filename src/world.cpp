@@ -28,6 +28,7 @@ World::World(std::uint32_t initial_seed, Biome initial_biome, Geography initial_
         p.decision_timer = i * .3; p.destination = position(p);
         villagers.push_back(p);
     }
+    director.brain.initialize(seed ^ 0xd1aec701U, 0);
     initialize_ecology();
     event(starting_population == 6 ? "Six villagers arrive at the clearing" : std::to_string(starting_population) + " villagers arrive at the clearing"); record_day();
 }
@@ -428,6 +429,7 @@ void World::execute(Villager& p, double dt) {
 void World::update(double dt) {
     if (!std::isfinite(dt) || dt <= 0 || dt > 1) return;
     ++ticks;
+    if (ticks % 2400 == 0) update_director();
     if (ecology_enabled && ticks % 2400 == 0) recruit_wildlife();
     const double growth = dt * growing_rate();
     if (ecology_enabled && ticks % 10 == 0) update_ecology(dt * 10);

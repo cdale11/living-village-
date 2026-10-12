@@ -134,7 +134,7 @@ addition to all simulation/neural/history state. Versions **1–6** upgrade
 automatically. Existing current/previous files remain browsable without being
 silently deleted or moved. Old worlds use their original temperate/ponds setting;
 their actual terrain, learned weights, replay and progress remain intact. Older
-executables cannot read version 7. Back up/synchronize the **whole saves folder**,
+executables cannot read version 8. Back up/synchronize the **whole saves folder**,
 including markers, worlds, backups and exports, before upgrades.
 
 ## Desktop/SSH commands

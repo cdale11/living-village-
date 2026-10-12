@@ -70,3 +70,11 @@ status. World creation includes a population selector from 2 to 20.
 
 L1 on Sound / Vibration selects the audio output; the output name and format
 are shown, and the preference is stored under config without altering the OS.
+
+**Y → Neural Director → A** cycles Observer, Adaptive and Off. This panel stays
+live; Start pauses the simulation. See [director](director.md) for limits and
+learning behavior.
+
+**Y → Ecology / Weather → A** cycles water, vegetation and traffic overlays and
+returns to the map. Repeat to return to the normal map. Legends explain the
+colors; permanent water remains recognizable.

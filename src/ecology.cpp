@@ -1,4 +1,5 @@
 #include "living_village/world.hpp"
+#include "living_village/workers.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -19,7 +20,7 @@ void World::update_weather() {
     const double warmth[] = {0, 0, 0, 9, -9, 7, 2, 6};
     const int rainfall[] = {30, 42, 30, 14, 26, 65, 55, 22};
     temperature = seasonal[season()] + warmth[static_cast<int>(biome)] + eco_random(9) - 4;
-    const int rain_chance = rainfall[static_cast<int>(biome)];
+    const int rain_chance = rainfall[static_cast<int>(biome)] + (director.mode == DirectorMode::Adaptive ? director.bias : 0);
     const int roll = eco_random(100);
     weather = roll < rain_chance ? (temperature <= 2 ? Weather::Snow : roll < 5 ? Weather::Storm : Weather::Rain)
         : temperature >= 30 && roll > 85 ? Weather::Heatwave : Weather::Clear;
@@ -95,8 +96,10 @@ void World::update_ecology(double seconds) {
     // Two fixed arrays: synchronous conservative transfers cannot duplicate water.
     std::array<double, map_size * map_size> runoff{}, groundwater{};
     int flooded = 0;
-    for (int y = 0; y < map_size; ++y) for (int x = 0; x < map_size; ++x) {
-        const int i = y * map_size + x; auto& t = tiles[i];
+    std::array<double, map_size * map_size> rain_added{}, evaporated{};
+    parallel_tiles(tiles.size(), [&](std::size_t first, std::size_t last) {
+    for (std::size_t i = first; i < last; ++i) {
+        auto& t = tiles[i];
         if (t.terrain == Terrain::Water) {
             // Permanent water bodies are explicit external reservoirs.
             t.surface_water = .7; t.moisture = 1; t.groundwater = .8; continue;
@@ -104,7 +107,7 @@ void World::update_ecology(double seconds) {
         const double rain = precipitation * seconds;
         if (weather == Weather::Snow && temperature <= 2) t.snowpack += rain;
         else t.surface_water += rain;
-        ecology.rain_input += rain;
+        rain_added[i] = rain;
         const double melt = std::min(t.snowpack, std::max(0.0, temperature) * .0005 * seconds);
         t.snowpack -= melt; t.surface_water += melt;
         double infiltration = std::min({t.surface_water, (1 - t.moisture) * .2, seconds * .003 * (1 - .8 * t.compaction)});
@@ -117,7 +120,12 @@ void World::update_ecology(double seconds) {
         const double surface_evap = std::min(t.surface_water, evap); t.surface_water -= surface_evap;
         const double soil_evap = std::min(t.moisture, evap * .45); t.moisture -= soil_evap;
         const double transpiration = std::min(t.moisture, seconds * .00002 * t.biomass * plant_growth(t)); t.moisture -= transpiration;
-        ecology.evaporation += surface_evap + soil_evap + transpiration;
+        evaporated[i] = surface_evap + soil_evap + transpiration;
+    }
+    });
+    // Fixed tile order preserves the exact serial floating-point accumulation.
+    for (std::size_t i = 0; i < tiles.size(); ++i) {
+        ecology.rain_input += rain_added[i]; ecology.evaporation += evaporated[i];
     }
     for (int y = 0; y < map_size; ++y) for (int x = 0; x < map_size; ++x) {
         const int i = y * map_size + x; const auto& t = tiles[i];

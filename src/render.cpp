@@ -1,4 +1,5 @@
 #include "living_village/render.hpp"
+#include "living_village/workers.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -163,6 +164,12 @@ void Renderer::draw(const World& world, const View& view) {
                 case Terrain::Grass: break;
             }
             if (tile.loose_food + tile.loose_wood + tile.loose_stone > 0) rect(sx + size - unit * 3, sy + size - unit * 3, unit * 2, unit * 2, {220, 190, 124, 255});
+            if (view.ecology_overlay > 0 && tile.terrain != Terrain::Water) {
+                const double value = std::clamp(view.ecology_overlay == 1 ? tile.moisture : view.ecology_overlay == 2 ? tile.biomass * tile.plant_health / 100 : tile.compaction, 0., 1.);
+                const auto low = static_cast<Uint8>(220 * (1 - value));
+                const auto high = static_cast<Uint8>(220 * value);
+                rect(sx, sy, size, size, view.ecology_overlay == 1 ? SDL_Color{low,100,high,155} : SDL_Color{low,high,65,155});
+            }
             if (tile.surface_water > .15 && tile.terrain != Terrain::Water) rect(sx, sy + size / 2, size, size / 2, {76, 124, 153, static_cast<Uint8>(std::min(180.0, tile.surface_water * 240))});
             if (tile.snowpack > .02 && tile.terrain != Terrain::Water) rect(sx, sy + size / 2, size, size / 2, {216, 227, 222, static_cast<Uint8>(std::min(180.0, tile.snowpack * 600))});
             if (tile.fire > 0) {
@@ -338,6 +345,10 @@ void Renderer::draw(const World& world, const View& view) {
     rect(0, 426, 720, 54, ink);
     text(12, 433, "A TILE/PLAN  X PERSON  Y VILLAGE  FN+START EXIT", muted);
     text(12, 455, view.status, cream, 2, 690);
+    if (view.ecology_overlay > 0 && view.panel == Panel::Map) {
+        const char* legends[] = {"", "SOIL WATER: RED DRY / BLUE WET", "VEGETATION: RED LOW / GREEN HIGH", "TRAFFIC: RED LOW / GREEN COMPACTED"};
+        rect(12, 74, 402, 22, ink); text(20, 80, legends[view.ecology_overlay], cream, 1);
+    }
     if (view.panel != Panel::Map) {
         rect(0, 54, 720, 372, {8, 19, 21, 155});
         rect(78, 62, 576, 356, {0, 0, 0, 70});
@@ -436,8 +447,8 @@ void Renderer::draw(const World& world, const View& view) {
                 break;
             }
             case Panel::Overview: {
-                const char* titles[] = {"VILLAGE LIFE", "POPULATION", "VILLAGE HISTORY", "NEURAL LEARNING", "ECONOMY / HISTORY", "SOUND / VIBRATION", "ECOLOGY / WEATHER", "WILDLIFE", "AGENT DIAGNOSTICS"};
-                text(102, 80, titles[std::clamp(view.overview_page, 0, 8)], cream, 3);
+                const char* titles[] = {"VILLAGE LIFE", "POPULATION", "VILLAGE HISTORY", "NEURAL LEARNING", "ECONOMY / HISTORY", "SOUND / VIBRATION", "ECOLOGY / WEATHER", "WILDLIFE", "AGENT DIAGNOSTICS", "NEURAL DIRECTOR"};
+                text(102, 80, titles[std::clamp(view.overview_page, 0, 9)], cream, 3);
                 if (view.overview_page == 0) {
                     int finished = 0; for (const auto& b : world.buildings) if (b.complete) ++finished;
                     text(102, 122, world.world_name, cream);
@@ -498,6 +509,18 @@ void Renderer::draw(const World& world, const View& view) {
                     text(102, 250, "Burning " + std::to_string(burning) + " | Plants lost " + std::to_string(world.ecology.plants_died), cream);
                     text(102, 282, "Wildlife " + std::to_string(world.animals.size()) + " | Predations " + std::to_string(world.ecology.predations), muted);
                     text(102, 314, "Building repairs " + std::to_string(world.ecology.repairs), cream);
+                    text(102, 344, "A: CYCLE WATER / VEGETATION / TRAFFIC MAP", muted, 1);
+                } else if (view.overview_page == 9) {
+                    const auto& d = world.director;
+                    text(102, 118, std::string("MODE: ") + d.mode_name() + " | CPU THREADS " + std::to_string(worker_count()), cream);
+                    text(102, 148, d.action_name(), cream);
+                    text(102, 178, d.reason, muted, 1);
+                    text(102, 208, "Decisions / interventions: " + std::to_string(d.decisions) + "/" + std::to_string(d.interventions), cream);
+                    text(102, 238, "Predicted / observed change: " + decimal(d.expected) + "/" + decimal(d.outcome), muted);
+                    text(102, 268, "Saved outcomes / SGD: " + std::to_string(d.brain.episodes) + "/" + std::to_string(d.brain.updates), cream);
+                    text(102, 298, d.pending ? "Three-day outcome pending" : "Observer proposals do not train", muted);
+                    text(102, 328, "A MODE | LEARNING TOGGLE ON NEURAL PAGE", muted, 1);
+                    text(102, 348, "Outcome association is not proof of causation", muted, 1);
                 } else if (view.overview_page == 8) {
                     const auto& p = world.villagers[selected_index]; const auto& b = p.brain;
                     text(102, 118, p.name + " | " + (p.alive() ? std::string("LIVE") : "DECEASED"), cream);

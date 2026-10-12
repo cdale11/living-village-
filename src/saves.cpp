@@ -70,7 +70,7 @@ void read_animal_brain(std::istream& in, Brain& b) {
 
 std::string World::serialize() const {
     std::ostringstream out;
-    out << std::setprecision(17) << "LIVING_VILLAGE 7\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
+    out << std::setprecision(17) << "LIVING_VILLAGE 8\n" << seed << ' ' << ticks << ' ' << food_stock << '\n';
     out << "GENERATION " << generator_version << ' ' << static_cast<int>(biome) << ' ' << static_cast<int>(geography) << ' ' << std::quoted(world_name) << '\n';
     out << wood_stock << ' ' << stone_stock << ' ' << auto_develop << ' ' << food_shortage << ' ' << simulation_speed << '\n';
     out << population_growth << ' ' << next_person_id << ' ' << next_migration_day << ' ' << next_birth_day << ' ' << births << ' ' << arrivals << ' ' << deaths << '\n';
@@ -145,6 +145,9 @@ std::string World::serialize() const {
             << a.body_temperature << ' ' << a.decision_timer << ' ' << a.action_timer << ' ' << a.last_birth_day << ' ' << a.target_id << ' ' << a.destination.x << ' ' << a.destination.y << ' ' << static_cast<int>(a.action) << ' ' << std::quoted(a.reason) << '\n';
         write_animal_brain(out, a.brain);
     }
+    const auto& d = director;
+    out << "DIRECTOR 1 " << static_cast<int>(d.mode) << ' ' << d.action << ' ' << d.bias << ' ' << d.decisions << ' ' << d.interventions << ' ' << d.pending_tick << ' ' << d.baseline << ' ' << d.expected << ' ' << d.outcome << ' ' << d.baseline_population << ' ' << d.pending << ' ' << std::quoted(d.reason) << '\n';
+    write_animal_brain(out, d.brain);
     const std::string body = out.str(); return body + "CHECKSUM " + std::to_string(checksum(body)) + "\n";
 }
 
@@ -155,7 +158,7 @@ World World::deserialize(const std::string& data) {
     trailer >> expected; require(!trailer.fail()); trailer >> std::ws; require(trailer.eof());
     require(checksum(data.substr(0, footer)) == expected);
     std::istringstream in(data.substr(0, footer)); std::string magic; int version = 0;
-    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 7);
+    in >> magic >> version; require(magic == "LIVING_VILLAGE" && version >= 1 && version <= 8);
     std::uint32_t seed = 0; in >> seed; World world(seed); world.chronicle.clear(); world.statistics.clear(); world.event_sequence = 0;
     in >> world.ticks >> world.food_stock;
     if (version >= 6) {
@@ -358,6 +361,15 @@ World World::deserialize(const std::string& data) {
             world.animals.push_back(a);
         }
     } else world.initialize_ecology();
+    if (version >= 8) {
+        auto& d = world.director; std::string label; int schema = 0, mode = 0;
+        in >> label >> schema >> mode >> d.action >> d.bias >> d.decisions >> d.interventions >> d.pending_tick >> d.baseline >> d.expected >> d.outcome >> d.baseline_population >> d.pending >> std::quoted(d.reason);
+        require(label == "DIRECTOR" && schema == 1 && mode >= 0 && mode <= 2 && d.action >= 0 && d.action <= 2 && (d.bias == 0 || d.bias == 8 || d.bias == -8)
+            && d.pending_tick <= world.ticks && range(d.baseline, 1) && std::isfinite(d.expected) && std::abs(d.expected) <= 1 && std::isfinite(d.outcome) && std::abs(d.outcome) <= 1
+            && d.baseline_population >= 0 && d.baseline_population <= population_limit && d.reason.size() <= 200 && d.interventions <= d.decisions && d.decisions <= 100000000000ULL);
+        d.mode = static_cast<DirectorMode>(mode); read_animal_brain(in, d.brain);
+        require(d.pending == d.brain.active && (!d.pending || (mode == 2 && d.brain.action == d.action)) && (mode == 2 || d.bias == 0));
+    }
     require(!in.fail()); in >> std::ws; require(in.eof()); return world;
 }
 

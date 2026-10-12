@@ -7,7 +7,7 @@ recipes, capacity/effect queries, placement validation and shared need-driven
 planning. `population.cpp` handles homes, households, births, arrivals, ageing
 and deaths. `brain.cpp` implements the per-resident MLP and bounded SGD;
 `learning.cpp` extracts observations and credits action outcomes. `saves.cpp`
-records full state and migrates version 1/2/3/4/5/6 saves to version 7. Headless runs and tests use the same simulation as the graphical game.
+records full state and migrates version 1/2/3/4/5/6/7 saves to version 8. Headless runs and tests use the same simulation as the graphical game.
 
 `ecology.cpp` updates weather, hydrology, plant/soil biology, hazards and maintenance
 every ten fixed ticks. `animals.cpp` updates bounded wildlife, reproduction and
@@ -73,3 +73,22 @@ hand-authored pixel data once, and renders them without image codecs. `rumble.cp
 provides bounded Linux evdev force feedback as a fallback to SDL. Runtime resource
 meters sample process CPU/current RSS at one-second intervals and never enter
 the save or simulation state. Artwork is installed inside the game folder.
+
+## CPU workers
+
+The executable detects CPU threads (up to eight) and creates a persistent pool
+including the main thread. On the four-core H700 this means three workers plus
+main. Independent per-tile precipitation, infiltration, snowmelt, evaporation and
+transpiration calculations run in disjoint chunks, followed by a barrier and
+fixed-order reduction. Neighbor transfers, random draws, AI decisions, population
+changes and SDL rendering remain ordered. Pool threads sleep between batches.
+`--threads 1` provides a reproducible serial comparison or lower-power override.
+Thread configuration is runtime hardware configuration, not saved world state.
+Fallback to one thread is available if worker creation fails. Regression checks
+compare full serialized worlds after serial/four-thread execution.
+
+**Y → Ecology / Weather → A** cycles soil-water, vegetation and traffic overlays,
+then returns to the map. Repeating this cycles back to the normal view. Colors
+represent actual moisture, biomass times plant health, and compaction; vegetation
+is not a universal wildlife habitat suitability score. The view selection is
+session-only. The neural director panel also reports active CPU thread count.

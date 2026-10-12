@@ -110,12 +110,12 @@ See [world management](world-management.md) for controller naming, seeds and del
 
 Version 7 saves retain demographics, stable IDs, homes, parents, names, partners,
 age progress, death causes, loose supplies, sparse relationships, and growth
-preferences. Versions 1–6 upgrade automatically with existing time, goals,
+preferences. Versions 1–7 upgrade automatically with existing time, goals,
 inventories, resource changes and PRNG intact. Existing ages are preserved and
 start accumulating birthday progress after upgrade. Initial ancestry is unknown;
 no family history is invented for old residents. Newly upgraded worlds delay
 arrival opportunities rather than immediately adding a crowd. Old binaries
-cannot read version 7 saves. There is no powered-off progression.
+cannot read version 8 saves. There is no powered-off progression.
 
 Each starting resident, newborn and arrival also receives an independent
 [online MLP](neural-learning.md), whose weights and pending experience are saved.

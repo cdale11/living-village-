@@ -5,6 +5,7 @@
 #include "living_village/render.hpp"
 #include "living_village/saves.hpp"
 #include "living_village/ui.hpp"
+#include "living_village/workers.hpp"
 #include <algorithm>
 #include <chrono>
 #include <csignal>
@@ -25,6 +26,7 @@ struct Options {
     std::uint32_t seed = 20261011;
     village::Biome biome = village::Biome::Temperate;
     village::Geography geography = village::Geography::Ponds;
+    int director_mode = -1, threads = 0;
     std::string world_name = "New Village";
     int frames = 0, steps = 24000, benchmark_villagers = 0, starting_food = 18, starting_population = 6;
     std::string save_dir = "saves", screenshot, art_ports;
@@ -41,6 +43,12 @@ Options options(int argc, char** argv) {
         auto value = [&]() { if (++i >= argc) throw std::runtime_error("Missing value for " + arg); return std::string(argv[i]); };
         if (arg == "--fullscreen") result.fullscreen = true;
         else if (arg == "--ai-diagnostics") result.ai_diagnostics = true;
+        else if (arg == "--threads") { result.threads = std::stoi(value()); if (result.threads < 1 || result.threads > 8) throw std::runtime_error("Threads must be 1 to 8"); }
+        else if (arg == "--director") {
+            const auto mode = value();
+            result.director_mode = mode == "off" ? 0 : mode == "observer" ? 1 : mode == "adaptive" ? 2 : -1;
+            if (result.director_mode < 0) throw std::runtime_error("Director: off, observer or adaptive");
+        }
         else if (arg == "--population") { result.starting_population = std::stoi(value()); if (result.starting_population < 2 || result.starting_population > 20) throw std::runtime_error("Population must be 2 to 20"); }
         else if (arg == "--starting-food") { result.starting_food = std::stoi(value()); if (result.starting_food != 6 && result.starting_food != 18 && result.starting_food != 30) throw std::runtime_error("Starting food: 6, 18 or 30"); }
         else if (arg == "--headless") result.headless = true;
@@ -71,6 +79,8 @@ Options options(int argc, char** argv) {
                       << "--world-name NAME --biome temperate|woodland|meadow|arid|taiga|rainforest|wetland|savanna\n"
                       << "--layout ponds|river|island|coast|highlands|lakes|peninsula|archipelago|delta|canyon|valley|plains\n"
                       << "--population 2..20 --starting-food 6|18|30 --ai-diagnostics (live panel)\n"
+                      << "--threads 1..8 (default: detected CPUs, capped at eight)\n"
+                      << "--director off|observer|adaptive (temporary headless mode or saved override)\n"
                       << "--register-port-art PORTS_DIRECTORY (no SDL needed)\n"
                       << "--headless --steps N   (no display, SDL or save writes)\n"
                       << "--diagnose-input --frames N --screenshot FILE.ppm\n"
@@ -88,7 +98,10 @@ int main(int argc, char** argv) {
     try {
         const Options config = options(argc, argv);
         if (!config.art_ports.empty()) { register_port_art(config.art_ports); return 0; }
+        configure_workers(config.threads);
+        std::cout << "Simulation CPU threads: " << worker_count() << " (including main thread)\n";
         World world(config.seed, config.biome, config.geography, config.starting_population); world.world_name = config.world_name; world.food_stock = config.starting_food;
+        if (config.director_mode >= 0) world.director.mode = static_cast<DirectorMode>(config.director_mode);
         if (config.benchmark_villagers) {
             world.population_growth = false;
             while (static_cast<int>(world.villagers.size()) < config.benchmark_villagers) {
@@ -106,6 +119,7 @@ int main(int argc, char** argv) {
             std::uint64_t training_updates = 0; for (const auto& p : world.villagers) training_updates += p.brain.updates;
             std::cout << "Headless: " << config.steps << " steps, day " << world.day() << ", " << survivors
                       << " alive (" << world.child_count() << " children), " << world.births << " births, " << world.arrivals << " arrivals, " << world.deaths << " deaths, " << built << "/" << world.buildings.size() << " buildings complete, " << seconds << " CPU wall seconds, " << training_updates << " retained learning updates, peak RSS " << usage.ru_maxrss << " KiB\n";
+            std::cout << "Director: " << world.director.mode_name() << ", " << world.director.decisions << " decisions, " << world.director.interventions << " interventions, " << world.director.brain.episodes << " observed outcomes, " << world.director.brain.updates << " SGD steps\n";
             std::cout << "Ecology: " << world.animals.size() << " animals, " << world.ecology.animal_births << " births, " << world.ecology.animal_deaths << " deaths, " << world.ecology.predations
                       << " predations, " << world.ecology.trees_born << " new trees, " << world.ecology.plants_died << " plants lost, " << world.ecology.repairs << " repairs, " << world.weather_name() << '\n';
             return 0;
@@ -129,6 +143,7 @@ int main(int argc, char** argv) {
                 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; ui.view.status = error.what(); ui.view.panel = Panel::Saves; }
             }
         }
+        if (config.director_mode >= 0) { world.director.mode = static_cast<DirectorMode>(config.director_mode); world.director.bias = 0; world.director.pending = false; world.director.brain.active = false; }
         ui.view.has_world = ready; ui.view.active_slot = ready ? active_id : ""; ui.view.saves = config.no_save ? std::vector<SaveSlot>{} : catalog.list();
         if (!ready && ui.view.panel != Panel::Saves) ui.view.panel = Panel::NewVillage;
         ui.view.speed = world.simulation_speed;
@@ -220,6 +235,9 @@ int main(int argc, char** argv) {
             } else if (request == Request::ToggleGrowth) {
                 world.population_growth = !world.population_growth;
                 ui.view.status = world.population_growth ? "New births and arrivals enabled" : "New births and arrivals paused";
+            } else if (request == Request::DirectorMode) {
+                world.cycle_director();
+                ui.view.status = std::string("Director: ") + world.director.mode_name();
             } else if (request == Request::ToggleLearning) {
                 world.learning_enabled = !world.learning_enabled;
                 ui.view.status = world.learning_enabled ? "Online neural learning enabled" : "Learning paused - learned decisions retained";

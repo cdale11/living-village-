@@ -10,9 +10,10 @@ enum class Panel { Map, Menu, Inspector, Overview, Speed, Controls, Tile, Build,
 struct View {
     double camera_x = 32, camera_y = 32;
     int tile_size = 28, selected = 0, menu_index = 0, speed = 1;
-    bool simulation_running() const { return has_world && (panel == Panel::Map || (panel == Panel::Overview && (overview_page == 3 || overview_page == 8))); }
+    bool simulation_running() const { return has_world && (panel == Panel::Map || (panel == Panel::Overview && (overview_page == 3 || overview_page == 8 || overview_page == 9))); }
     bool follow = false;
     int watched_animal_id = -1;
+    int ecology_overlay = 0;
     double cpu_percent = -1, ram_mib = -1;
     std::string audio_output, audio_status = "Not checked", rumble_status = "Not checked";
     int inspector_page = 0;

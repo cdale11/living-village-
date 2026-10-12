@@ -55,7 +55,7 @@ int main() {
                 if (page == 4) graphics.screenshot("build/learning-preview.ppm");
                 if (page == 5) graphics.screenshot("build/practice-preview.ppm");
             }
-            if (panel == Panel::Overview) for (int page = 1; page < 9; ++page) {
+            if (panel == Panel::Overview) for (int page = 1; page < 10; ++page) {
                 view.overview_page = page; graphics.draw(world, view);
                 if (page == 1) graphics.screenshot("build/population-preview.ppm");
                 if (page == 4) graphics.screenshot("build/economy-preview.ppm");
@@ -67,6 +67,8 @@ int main() {
             }
             sdl.RenderPresent(renderer);
         }
+        view.panel = Panel::Map;
+        for (int overlay = 1; overlay <= 3; ++overlay) { view.ecology_overlay = overlay; graphics.draw(world, view); }
         }
         sdl.DestroyRenderer(renderer); sdl.DestroyWindow(window); sdl.Quit();
         std::cout << "PASS: map, buildings, planning, inspection and controller panels at 720x480\n";

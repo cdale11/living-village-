@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
         World upgraded = World::deserialize(legacy.str());
         check(upgraded.seed == 123 && upgraded.ticks == 5000 && upgraded.simulation_speed == 4 && !upgraded.auto_develop && upgraded.gather_orders.size() == 1 && upgraded.villagers.size() == 6, "Version 2 migration lost world/settings/designations");
         check(upgraded.buildings.size() > 2 && !upgraded.buildings[2].contributors.empty() && upgraded.villagers[0].home >= 0 && upgraded.next_person_id == 6, "Migration lost construction credit or failed to initialize household identities");
-        check(upgraded.serialize().find("LIVING_VILLAGE 7\n") == 0 && World::deserialize(upgraded.serialize()).serialize() == upgraded.serialize(), "Version 2 migration did not produce a valid version 7 save");
+        check(upgraded.serialize().find("LIVING_VILLAGE 8\n") == 0 && World::deserialize(upgraded.serialize()).serialize() == upgraded.serialize(), "Version 2 migration did not produce a valid version 8 save");
         World restored = World::deserialize(parents.serialize()); advance(parents, 24000); advance(restored, 24000);
         check(parents.serialize() == restored.serialize(), "Population save continuation diverged");
 

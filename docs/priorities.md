@@ -113,3 +113,19 @@ samples CPU/current RSS in the header. The device log confirms ALSA and controll
 FF capability, but audible output, felt pulses and the new visuals still require
 physical confirmation. No scripted emergence or automatic power-off progression
 was introduced.
+
+## Neural director milestone
+
+Implemented initial offline MLP director with Off/Observer/Adaptive modes,
+bounded weather opportunities, delayed three-day outcome learning, saved replay
+and controller diagnostics. Observer remains the default. See [director](director.md)
+for intervention limits, provisional reward proxies and evaluation commands.
+Next director work follows causal event tracking and outcome evaluation: richer
+trend memory, multi-seed comparisons and additional constrained opportunities.
+Actual benefit to emergence and handheld cost remain validation work.
+
+The CPU milestone adds a persistent detected-core worker pool (four total threads
+on H700) for independent tile hydrology calculations with ordered reductions.
+The first observation overlays expose real soil water, vegetation condition and
+traffic compaction. These are initial steps toward the broader emergence tools;
+causal event links, conservation rules and species population histories remain.
